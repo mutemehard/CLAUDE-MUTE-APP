@@ -13,6 +13,8 @@ import {
   FavoritesScreen,
   ProfileScreen,
   ConcertDetailScreen,
+  ArtistDetailScreen,
+  VenueDetailScreen,
   FilterScreen,
 } from './src/screens';
 import { colors } from './src/constants';
@@ -120,6 +122,20 @@ export default function App() {
             options={{
               animation: 'slide_from_bottom',
               presentation: 'modal',
+            }}
+          />
+          <Stack.Screen
+            name="ArtistDetail"
+            component={ArtistDetailScreen}
+            options={{
+              animation: 'slide_from_right',
+            }}
+          />
+          <Stack.Screen
+            name="VenueDetail"
+            component={VenueDetailScreen}
+            options={{
+              animation: 'slide_from_right',
             }}
           />
           <Stack.Screen

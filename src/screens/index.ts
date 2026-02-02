@@ -4,4 +4,6 @@ export { MapScreen } from './MapScreen';
 export { FavoritesScreen } from './FavoritesScreen';
 export { ProfileScreen } from './ProfileScreen';
 export { ConcertDetailScreen } from './ConcertDetailScreen';
+export { ArtistDetailScreen } from './ArtistDetailScreen';
+export { VenueDetailScreen } from './VenueDetailScreen';
 export { FilterScreen } from './FilterScreen';
