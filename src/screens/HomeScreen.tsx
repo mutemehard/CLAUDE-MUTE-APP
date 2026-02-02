@@ -66,9 +66,17 @@ const getNextWeekendDates = (): { start: Date; end: Date } => {
 
 export const HomeScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
-  const { concerts, isLoading, fetchConcerts, isFavorite, addFavorite, removeFavorite } = useStore();
+  const { concerts, filters, isLoading, fetchConcerts, isFavorite, addFavorite, removeFavorite } = useStore();
   const [activeTab, setActiveTab] = useState('tonight');
   const [displayedConcerts, setDisplayedConcerts] = useState<Concert[]>([]);
+
+  // Count active filters
+  const activeFiltersCount = [
+    filters.genres?.length,
+    filters.arrondissements?.length,
+    filters.priceRange,
+    filters.showSoldOut === false,
+  ].filter(Boolean).length;
 
   // Charge les donnees au demarrage
   useEffect(() => {
@@ -161,8 +169,21 @@ export const HomeScreen: React.FC = () => {
 
       {/* Header minimaliste */}
       <View style={styles.header}>
-        <Text style={styles.logo}>{APP_CONFIG.name}</Text>
-        <Text style={styles.tagline}>{APP_CONFIG.tagline}</Text>
+        <View style={styles.headerLeft}>
+          <Text style={styles.logo}>{APP_CONFIG.name}</Text>
+          <Text style={styles.tagline}>{APP_CONFIG.tagline}</Text>
+        </View>
+        <TouchableOpacity
+          style={styles.filterButton}
+          onPress={() => navigation.navigate('Filters')}
+        >
+          <Text style={styles.filterIcon}>⚙️</Text>
+          {activeFiltersCount > 0 && (
+            <View style={styles.filterBadge}>
+              <Text style={styles.filterBadgeText}>{activeFiltersCount}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
       </View>
 
       {/* Onglets principaux */}
@@ -245,9 +266,15 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.lg,
     paddingBottom: spacing.md,
+  },
+  headerLeft: {
+    flex: 1,
   },
   logo: {
     fontSize: 36,
@@ -259,6 +286,35 @@ const styles = StyleSheet.create({
     ...typography.bodySmall,
     color: colors.textMuted,
     marginTop: spacing.xs,
+  },
+  filterButton: {
+    width: 44,
+    height: 44,
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  filterIcon: {
+    fontSize: 20,
+  },
+  filterBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.full,
+    minWidth: 18,
+    height: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  filterBadgeText: {
+    ...typography.caption,
+    color: colors.textPrimary,
+    fontWeight: 'bold',
+    fontSize: 10,
   },
   tabsContainer: {
     flexDirection: 'row',

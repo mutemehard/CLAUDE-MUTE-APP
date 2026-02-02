@@ -13,6 +13,7 @@ import {
   FavoritesScreen,
   ProfileScreen,
   ConcertDetailScreen,
+  FilterScreen,
 } from './src/screens';
 import { colors } from './src/constants';
 import { RootStackParamList, TabParamList } from './src/types';
@@ -116,6 +117,14 @@ export default function App() {
           <Stack.Screen
             name="ConcertDetail"
             component={ConcertDetailScreen}
+            options={{
+              animation: 'slide_from_bottom',
+              presentation: 'modal',
+            }}
+          />
+          <Stack.Screen
+            name="Filters"
+            component={FilterScreen}
             options={{
               animation: 'slide_from_bottom',
               presentation: 'modal',
