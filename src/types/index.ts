@@ -109,6 +109,7 @@ export type RootStackParamList = {
   ArtistDetail: { artistId: string };
   VenueDetail: { venueId: string };
   Filters: undefined;
+  Settings: undefined;
 };
 
 // Type pour l'historique des concerts vus

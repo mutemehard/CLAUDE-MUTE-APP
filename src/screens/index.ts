@@ -7,3 +7,4 @@ export { ConcertDetailScreen } from './ConcertDetailScreen';
 export { ArtistDetailScreen } from './ArtistDetailScreen';
 export { VenueDetailScreen } from './VenueDetailScreen';
 export { FilterScreen } from './FilterScreen';
+export { SettingsScreen } from './SettingsScreen';

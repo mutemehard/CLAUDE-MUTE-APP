@@ -11,8 +11,13 @@ import {
   TextInput,
   Alert,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, typography, borderRadius, APP_CONFIG, MUSIC_GENRES } from '../constants';
-import { AttendedConcert } from '../types';
+import { AttendedConcert, RootStackParamList } from '../types';
+import { useStore } from '../hooks';
+
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 // Mock data pour les concerts vus
 const mockAttendedConcerts: AttendedConcert[] = [
@@ -59,9 +64,13 @@ const mockAttendedConcerts: AttendedConcert[] = [
 ];
 
 export const ProfileScreen: React.FC = () => {
+  const navigation = useNavigation<NavigationProp>();
+  const { attendedConcerts: storeAttendedConcerts, addAttendedConcert } = useStore();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [selectedGenres, setSelectedGenres] = useState<string[]>(['Techno', 'Electronic', 'Rock']);
-  const [attendedConcerts, setAttendedConcerts] = useState<AttendedConcert[]>(mockAttendedConcerts);
+  const [attendedConcerts, setAttendedConcerts] = useState<AttendedConcert[]>(
+    storeAttendedConcerts.length > 0 ? storeAttendedConcerts : mockAttendedConcerts
+  );
   const [showAddModal, setShowAddModal] = useState(false);
   const [newConcert, setNewConcert] = useState({ artist: '', venue: '', date: '' });
 
@@ -157,8 +166,18 @@ export const ProfileScreen: React.FC = () => {
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.logo}>{APP_CONFIG.name}</Text>
-          <Text style={styles.subtitle}>Mon profil</Text>
+          <View style={styles.headerTop}>
+            <View>
+              <Text style={styles.logo}>{APP_CONFIG.name}</Text>
+              <Text style={styles.subtitle}>Mon profil</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.settingsButton}
+              onPress={() => navigation.navigate('Settings')}
+            >
+              <Text style={styles.settingsIcon}>⚙️</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Stats principales */}
@@ -372,6 +391,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.lg,
     paddingBottom: spacing.md,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  settingsButton: {
+    width: 44,
+    height: 44,
+    backgroundColor: colors.surface,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  settingsIcon: {
+    fontSize: 20,
   },
   logo: {
     fontSize: 36,

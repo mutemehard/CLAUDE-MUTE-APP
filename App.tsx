@@ -16,6 +16,7 @@ import {
   ArtistDetailScreen,
   VenueDetailScreen,
   FilterScreen,
+  SettingsScreen,
 } from './src/screens';
 import { colors } from './src/constants';
 import { RootStackParamList, TabParamList } from './src/types';
@@ -144,6 +145,13 @@ export default function App() {
             options={{
               animation: 'slide_from_bottom',
               presentation: 'modal',
+            }}
+          />
+          <Stack.Screen
+            name="Settings"
+            component={SettingsScreen}
+            options={{
+              animation: 'slide_from_right',
             }}
           />
         </Stack.Navigator>
