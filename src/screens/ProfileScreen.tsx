@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,12 +7,63 @@ import {
   TouchableOpacity,
   SafeAreaView,
   Switch,
+  Modal,
+  TextInput,
+  Alert,
 } from 'react-native';
 import { colors, spacing, typography, borderRadius, APP_CONFIG, MUSIC_GENRES } from '../constants';
+import { AttendedConcert } from '../types';
+
+// Mock data pour les concerts vus
+const mockAttendedConcerts: AttendedConcert[] = [
+  {
+    concertId: '1',
+    artistName: 'Daft Punk',
+    venueName: 'Bercy',
+    date: '2007-06-14',
+    addedAt: '2024-01-15',
+    rating: 5,
+  },
+  {
+    concertId: '2',
+    artistName: 'Justice',
+    venueName: 'Zenith Paris',
+    date: '2023-11-20',
+    addedAt: '2023-11-21',
+    rating: 5,
+  },
+  {
+    concertId: '3',
+    artistName: 'Phoenix',
+    venueName: 'Olympia',
+    date: '2022-05-10',
+    addedAt: '2022-05-11',
+    rating: 4,
+  },
+  {
+    concertId: '4',
+    artistName: 'Orelsan',
+    venueName: 'Accor Arena',
+    date: '2023-03-15',
+    addedAt: '2023-03-16',
+    rating: 5,
+  },
+  {
+    concertId: '5',
+    artistName: 'Justice',
+    venueName: 'Olympia',
+    date: '2018-04-22',
+    addedAt: '2024-01-10',
+    rating: 5,
+  },
+];
 
 export const ProfileScreen: React.FC = () => {
-  const [notificationsEnabled, setNotificationsEnabled] = React.useState(true);
-  const [selectedGenres, setSelectedGenres] = React.useState<string[]>(['Rock', 'Electronic', 'Pop']);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [selectedGenres, setSelectedGenres] = useState<string[]>(['Techno', 'Electronic', 'Rock']);
+  const [attendedConcerts, setAttendedConcerts] = useState<AttendedConcert[]>(mockAttendedConcerts);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newConcert, setNewConcert] = useState({ artist: '', venue: '', date: '' });
 
   const toggleGenre = (genre: string) => {
     setSelectedGenres(prev =>
@@ -22,31 +73,189 @@ export const ProfileScreen: React.FC = () => {
     );
   };
 
+  // Calcul des stats
+  const getStats = () => {
+    const totalConcerts = attendedConcerts.length;
+
+    // Artiste le plus vu
+    const artistCounts: Record<string, number> = {};
+    attendedConcerts.forEach(c => {
+      artistCounts[c.artistName] = (artistCounts[c.artistName] || 0) + 1;
+    });
+    const topArtist = Object.entries(artistCounts).sort((a, b) => b[1] - a[1])[0];
+
+    // Salle la plus visitee
+    const venueCounts: Record<string, number> = {};
+    attendedConcerts.forEach(c => {
+      venueCounts[c.venueName] = (venueCounts[c.venueName] || 0) + 1;
+    });
+    const topVenue = Object.entries(venueCounts).sort((a, b) => b[1] - a[1])[0];
+
+    // Premier concert
+    const sortedByDate = [...attendedConcerts].sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+    const firstConcert = sortedByDate[0];
+
+    // Annees d'experience
+    const yearsActive = firstConcert
+      ? new Date().getFullYear() - new Date(firstConcert.date).getFullYear()
+      : 0;
+
+    return {
+      totalConcerts,
+      topArtist: topArtist ? { name: topArtist[0], count: topArtist[1] } : null,
+      topVenue: topVenue ? { name: topVenue[0], count: topVenue[1] } : null,
+      yearsActive,
+      uniqueArtists: Object.keys(artistCounts).length,
+    };
+  };
+
+  const stats = getStats();
+
+  const handleAddConcert = () => {
+    if (!newConcert.artist || !newConcert.venue || !newConcert.date) {
+      Alert.alert('Erreur', 'Remplis tous les champs');
+      return;
+    }
+
+    const concert: AttendedConcert = {
+      concertId: Date.now().toString(),
+      artistName: newConcert.artist,
+      venueName: newConcert.venue,
+      date: newConcert.date,
+      addedAt: new Date().toISOString(),
+    };
+
+    setAttendedConcerts(prev => [concert, ...prev]);
+    setNewConcert({ artist: '', venue: '', date: '' });
+    setShowAddModal(false);
+  };
+
+  const formatDate = (dateStr: string): string => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('fr-FR', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
+  };
+
+  // Grouper les concerts par annee
+  const getConcertsByYear = () => {
+    const byYear: Record<string, AttendedConcert[]> = {};
+    attendedConcerts.forEach(c => {
+      const year = new Date(c.date).getFullYear().toString();
+      if (!byYear[year]) byYear[year] = [];
+      byYear[year].push(c);
+    });
+    return Object.entries(byYear).sort((a, b) => parseInt(b[0]) - parseInt(a[0]));
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Profil</Text>
+          <Text style={styles.logo}>{APP_CONFIG.name}</Text>
+          <Text style={styles.subtitle}>Mon profil</Text>
         </View>
 
-        {/* Avatar / User info */}
-        <View style={styles.userSection}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>🎵</Text>
+        {/* Stats principales */}
+        <View style={styles.statsSection}>
+          <View style={styles.mainStat}>
+            <Text style={styles.mainStatNumber}>{stats.totalConcerts}</Text>
+            <Text style={styles.mainStatLabel}>concerts</Text>
           </View>
-          <Text style={styles.userName}>Utilisateur</Text>
-          <Text style={styles.userLocation}>{APP_CONFIG.defaultCity}, France</Text>
+
+          <View style={styles.secondaryStats}>
+            <View style={styles.secondaryStat}>
+              <Text style={styles.secondaryStatNumber}>{stats.uniqueArtists}</Text>
+              <Text style={styles.secondaryStatLabel}>artistes</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.secondaryStat}>
+              <Text style={styles.secondaryStatNumber}>{stats.yearsActive}</Text>
+              <Text style={styles.secondaryStatLabel}>ans</Text>
+            </View>
+          </View>
         </View>
 
-        {/* Preferences musicales */}
+        {/* Highlights */}
+        {stats.topArtist && (
+          <View style={styles.highlightsSection}>
+            <View style={styles.highlight}>
+              <Text style={styles.highlightIcon}>🏆</Text>
+              <View style={styles.highlightContent}>
+                <Text style={styles.highlightLabel}>Artiste prefere</Text>
+                <Text style={styles.highlightValue}>
+                  {stats.topArtist.name} ({stats.topArtist.count}x)
+                </Text>
+              </View>
+            </View>
+
+            {stats.topVenue && (
+              <View style={styles.highlight}>
+                <Text style={styles.highlightIcon}>📍</Text>
+                <View style={styles.highlightContent}>
+                  <Text style={styles.highlightLabel}>Salle favorite</Text>
+                  <Text style={styles.highlightValue}>
+                    {stats.topVenue.name} ({stats.topVenue.count}x)
+                  </Text>
+                </View>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Historique des concerts */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Mon historique</Text>
+            <TouchableOpacity
+              style={styles.addButton}
+              onPress={() => setShowAddModal(true)}
+            >
+              <Text style={styles.addButtonText}>+ Ajouter</Text>
+            </TouchableOpacity>
+          </View>
+
+          {getConcertsByYear().map(([year, concerts]) => (
+            <View key={year} style={styles.yearGroup}>
+              <Text style={styles.yearLabel}>{year}</Text>
+              {concerts.map(concert => (
+                <View key={concert.concertId} style={styles.concertItem}>
+                  <View style={styles.concertInfo}>
+                    <Text style={styles.concertArtist}>{concert.artistName}</Text>
+                    <Text style={styles.concertDetails}>
+                      {concert.venueName} · {formatDate(concert.date)}
+                    </Text>
+                  </View>
+                  {concert.rating && (
+                    <Text style={styles.concertRating}>
+                      {'★'.repeat(concert.rating)}
+                    </Text>
+                  )}
+                </View>
+              ))}
+            </View>
+          ))}
+
+          {attendedConcerts.length === 0 && (
+            <View style={styles.emptyHistory}>
+              <Text style={styles.emptyIcon}>🎤</Text>
+              <Text style={styles.emptyText}>
+                Ajoute tes premiers concerts !
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Preferences */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Genres preferes</Text>
-          <Text style={styles.sectionSubtitle}>
-            Selectionne tes genres pour des recommandations personnalisees
-          </Text>
           <View style={styles.genresContainer}>
-            {MUSIC_GENRES.map((genre) => (
+            {MUSIC_GENRES.slice(0, 12).map((genre) => (
               <TouchableOpacity
                 key={genre}
                 style={[
@@ -71,12 +280,11 @@ export const ProfileScreen: React.FC = () => {
         {/* Notifications */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Notifications</Text>
-
           <View style={styles.settingRow}>
             <View style={styles.settingInfo}>
-              <Text style={styles.settingLabel}>Activer les notifications</Text>
+              <Text style={styles.settingLabel}>Recevoir des notifications</Text>
               <Text style={styles.settingDescription}>
-                Recois des alertes pour les nouveaux concerts
+                Digest hebdomadaire le vendredi
               </Text>
             </View>
             <Switch
@@ -86,83 +294,71 @@ export const ProfileScreen: React.FC = () => {
               thumbColor={colors.textPrimary}
             />
           </View>
-
-          <View style={styles.settingRow}>
-            <View style={styles.settingInfo}>
-              <Text style={styles.settingLabel}>Concerts a proximite</Text>
-              <Text style={styles.settingDescription}>
-                Alerte quand un concert est proche de toi
-              </Text>
-            </View>
-            <Switch
-              value={true}
-              onValueChange={() => {}}
-              trackColor={{ false: colors.surface, true: colors.primary }}
-              thumbColor={colors.textPrimary}
-              disabled={!notificationsEnabled}
-            />
-          </View>
-
-          <View style={styles.settingRow}>
-            <View style={styles.settingInfo}>
-              <Text style={styles.settingLabel}>Artistes suivis</Text>
-              <Text style={styles.settingDescription}>
-                Alerte pour les nouvelles dates de tes artistes
-              </Text>
-            </View>
-            <Switch
-              value={true}
-              onValueChange={() => {}}
-              trackColor={{ false: colors.surface, true: colors.primary }}
-              thumbColor={colors.textPrimary}
-              disabled={!notificationsEnabled}
-            />
-          </View>
-        </View>
-
-        {/* A propos */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>A propos</Text>
-
-          <TouchableOpacity style={styles.menuItem}>
-            <Text style={styles.menuIcon}>📱</Text>
-            <Text style={styles.menuLabel}>Version</Text>
-            <Text style={styles.menuValue}>1.0.0 (MVP)</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.menuItem}>
-            <Text style={styles.menuIcon}>🔗</Text>
-            <Text style={styles.menuLabel}>Sources de donnees</Text>
-            <Text style={styles.menuArrow}>→</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.menuItem}>
-            <Text style={styles.menuIcon}>📄</Text>
-            <Text style={styles.menuLabel}>Conditions d'utilisation</Text>
-            <Text style={styles.menuArrow}>→</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.menuItem}>
-            <Text style={styles.menuIcon}>🔒</Text>
-            <Text style={styles.menuLabel}>Politique de confidentialite</Text>
-            <Text style={styles.menuArrow}>→</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.menuItem}>
-            <Text style={styles.menuIcon}>💬</Text>
-            <Text style={styles.menuLabel}>Nous contacter</Text>
-            <Text style={styles.menuArrow}>→</Text>
-          </TouchableOpacity>
         </View>
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text style={styles.footerText}>ParisGigs</Text>
-          <Text style={styles.footerSubtext}>
-            Le Shazam du concert live
-          </Text>
+          <Text style={styles.footerText}>{APP_CONFIG.name}</Text>
+          <Text style={styles.footerSubtext}>{APP_CONFIG.tagline}</Text>
+          <Text style={styles.version}>v1.0.0 (MVP)</Text>
         </View>
       </ScrollView>
+
+      {/* Modal pour ajouter un concert */}
+      <Modal
+        visible={showAddModal}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowAddModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Ajouter un concert</Text>
+            <Text style={styles.modalSubtitle}>
+              Ajoute un concert auquel tu as assiste
+            </Text>
+
+            <TextInput
+              style={styles.input}
+              placeholder="Nom de l'artiste"
+              placeholderTextColor={colors.textMuted}
+              value={newConcert.artist}
+              onChangeText={text => setNewConcert(prev => ({ ...prev, artist: text }))}
+            />
+
+            <TextInput
+              style={styles.input}
+              placeholder="Nom de la salle"
+              placeholderTextColor={colors.textMuted}
+              value={newConcert.venue}
+              onChangeText={text => setNewConcert(prev => ({ ...prev, venue: text }))}
+            />
+
+            <TextInput
+              style={styles.input}
+              placeholder="Date (AAAA-MM-JJ)"
+              placeholderTextColor={colors.textMuted}
+              value={newConcert.date}
+              onChangeText={text => setNewConcert(prev => ({ ...prev, date: text }))}
+            />
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalCancelButton}
+                onPress={() => setShowAddModal(false)}
+              >
+                <Text style={styles.modalCancelText}>Annuler</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalConfirmButton}
+                onPress={handleAddConcert}
+              >
+                <Text style={styles.modalConfirmText}>Ajouter</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -173,57 +369,168 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   header: {
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.md,
   },
-  title: {
-    ...typography.h1,
+  logo: {
+    fontSize: 36,
+    fontWeight: '900',
     color: colors.textPrimary,
+    letterSpacing: 2,
   },
-  userSection: {
-    alignItems: 'center',
-    paddingVertical: spacing.lg,
-  },
-  avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.md,
-  },
-  avatarText: {
-    fontSize: 40,
-  },
-  userName: {
-    ...typography.h2,
-    color: colors.textPrimary,
-  },
-  userLocation: {
-    ...typography.body,
+  subtitle: {
+    ...typography.bodySmall,
     color: colors.textMuted,
     marginTop: spacing.xs,
   },
+  statsSection: {
+    alignItems: 'center',
+    paddingVertical: spacing.lg,
+    marginHorizontal: spacing.lg,
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.xl,
+    marginBottom: spacing.md,
+  },
+  mainStat: {
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  mainStatNumber: {
+    fontSize: 64,
+    fontWeight: '900',
+    color: colors.primary,
+  },
+  mainStatLabel: {
+    ...typography.body,
+    color: colors.textSecondary,
+    marginTop: -spacing.xs,
+  },
+  secondaryStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  secondaryStat: {
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+  },
+  secondaryStatNumber: {
+    ...typography.h2,
+    color: colors.textPrimary,
+  },
+  secondaryStatLabel: {
+    ...typography.caption,
+    color: colors.textMuted,
+  },
+  statDivider: {
+    width: 1,
+    height: 30,
+    backgroundColor: colors.border,
+  },
+  highlightsSection: {
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+    gap: spacing.sm,
+  },
+  highlight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+  },
+  highlightIcon: {
+    fontSize: 24,
+    marginRight: spacing.md,
+  },
+  highlightContent: {
+    flex: 1,
+  },
+  highlightLabel: {
+    ...typography.caption,
+    color: colors.textMuted,
+  },
+  highlightValue: {
+    ...typography.body,
+    color: colors.textPrimary,
+    fontWeight: '600',
+  },
   section: {
     marginTop: spacing.lg,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.lg,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.md,
   },
   sectionTitle: {
     ...typography.h3,
     color: colors.textPrimary,
-    marginBottom: spacing.xs,
   },
-  sectionSubtitle: {
-    ...typography.bodySmall,
-    color: colors.textMuted,
+  addButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.full,
+  },
+  addButtonText: {
+    ...typography.caption,
+    color: colors.textPrimary,
+    fontWeight: '600',
+  },
+  yearGroup: {
     marginBottom: spacing.md,
+  },
+  yearLabel: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: '700',
+    marginBottom: spacing.sm,
+  },
+  concertItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  concertInfo: {
+    flex: 1,
+  },
+  concertArtist: {
+    ...typography.body,
+    color: colors.textPrimary,
+    fontWeight: '600',
+  },
+  concertDetails: {
+    ...typography.caption,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  concertRating: {
+    color: colors.warning,
+    fontSize: 12,
+  },
+  emptyHistory: {
+    alignItems: 'center',
+    paddingVertical: spacing.xl,
+  },
+  emptyIcon: {
+    fontSize: 48,
+    marginBottom: spacing.md,
+  },
+  emptyText: {
+    ...typography.body,
+    color: colors.textMuted,
   },
   genresContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.sm,
+    marginTop: spacing.sm,
   },
   genreChip: {
     backgroundColor: colors.surface,
@@ -231,7 +538,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.full,
     borderWidth: 1,
-    borderColor: colors.surface,
+    borderColor: colors.border,
   },
   genreChipSelected: {
     backgroundColor: colors.primary,
@@ -252,7 +559,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderRadius: borderRadius.lg,
     padding: spacing.md,
-    marginBottom: spacing.sm,
+    marginTop: spacing.sm,
   },
   settingInfo: {
     flex: 1,
@@ -267,31 +574,6 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     marginTop: 2,
   },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
-  },
-  menuIcon: {
-    fontSize: 20,
-    marginRight: spacing.md,
-  },
-  menuLabel: {
-    ...typography.body,
-    color: colors.textPrimary,
-    flex: 1,
-  },
-  menuValue: {
-    ...typography.bodySmall,
-    color: colors.textMuted,
-  },
-  menuArrow: {
-    ...typography.body,
-    color: colors.textMuted,
-  },
   footer: {
     alignItems: 'center',
     paddingVertical: spacing.xxl,
@@ -299,10 +581,77 @@ const styles = StyleSheet.create({
   footerText: {
     ...typography.h3,
     color: colors.primary,
+    fontWeight: '900',
+    letterSpacing: 2,
   },
   footerSubtext: {
     ...typography.caption,
     color: colors.textMuted,
     marginTop: spacing.xs,
+  },
+  version: {
+    ...typography.caption,
+    color: colors.textMuted,
+    marginTop: spacing.sm,
+    opacity: 0.5,
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: borderRadius.xl,
+    borderTopRightRadius: borderRadius.xl,
+    padding: spacing.lg,
+    paddingBottom: spacing.xxl,
+  },
+  modalTitle: {
+    ...typography.h2,
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
+  },
+  modalSubtitle: {
+    ...typography.bodySmall,
+    color: colors.textMuted,
+    marginBottom: spacing.lg,
+  },
+  input: {
+    backgroundColor: colors.surfaceLight,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    color: colors.textPrimary,
+    ...typography.body,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginTop: spacing.md,
+  },
+  modalCancelButton: {
+    flex: 1,
+    backgroundColor: colors.surfaceLight,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    alignItems: 'center',
+  },
+  modalCancelText: {
+    ...typography.body,
+    color: colors.textSecondary,
+  },
+  modalConfirmButton: {
+    flex: 1,
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    alignItems: 'center',
+  },
+  modalConfirmText: {
+    ...typography.body,
+    color: colors.textPrimary,
+    fontWeight: '600',
   },
 });
