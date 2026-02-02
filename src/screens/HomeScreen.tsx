@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,17 +8,23 @@ import {
   TouchableOpacity,
   SafeAreaView,
   StatusBar,
+  ScrollView,
+  Image,
+  Dimensions,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ConcertCard } from '../components/ConcertCard';
 import { useStore } from '../hooks';
-import { colors, spacing, typography, borderRadius, APP_CONFIG } from '../constants';
-import { RootStackParamList, Concert } from '../types';
+import { colors, spacing, typography, borderRadius, APP_CONFIG, MUSIC_GENRES } from '../constants';
+import { RootStackParamList, Concert, Artist, Venue } from '../types';
+import { artistService, venueService } from '../services';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-// Onglets principaux style Dice
+const { width } = Dimensions.get('window');
+
+// Onglets principaux
 const mainTabs = [
   { id: 'tonight', label: 'Ce soir', icon: '🌙' },
   { id: 'weekend', label: 'Week-end', icon: '🎉' },
@@ -27,17 +33,10 @@ const mainTabs = [
 ];
 
 // Fonction pour verifier si c'est le week-end
-const isWeekend = (date: Date): boolean => {
-  const day = date.getDay();
-  return day === 5 || day === 6 || day === 0; // Vendredi, Samedi, Dimanche
-};
-
-// Fonction pour obtenir les dates du prochain week-end
 const getNextWeekendDates = (): { start: Date; end: Date } => {
   const now = new Date();
   const dayOfWeek = now.getDay();
 
-  // Jours jusqu'a vendredi
   const daysUntilFriday = dayOfWeek <= 5 ? 5 - dayOfWeek : 6;
 
   const friday = new Date(now);
@@ -48,7 +47,6 @@ const getNextWeekendDates = (): { start: Date; end: Date } => {
   sunday.setDate(friday.getDate() + 2);
   sunday.setHours(23, 59, 59, 999);
 
-  // Si on est deja vendredi-dimanche, on prend ce week-end
   if (dayOfWeek >= 5 || dayOfWeek === 0) {
     const thisWeekendStart = new Date(now);
     thisWeekendStart.setHours(0, 0, 0, 0);
@@ -69,6 +67,9 @@ export const HomeScreen: React.FC = () => {
   const { concerts, filters, isLoading, fetchConcerts, isFavorite, addFavorite, removeFavorite } = useStore();
   const [activeTab, setActiveTab] = useState('tonight');
   const [displayedConcerts, setDisplayedConcerts] = useState<Concert[]>([]);
+  const [popularArtists, setPopularArtists] = useState<Artist[]>([]);
+  const [trendingVenues, setTrendingVenues] = useState<Venue[]>([]);
+  const [selectedGenre, setSelectedGenre] = useState<string | null>(null);
 
   // Count active filters
   const activeFiltersCount = [
@@ -80,22 +81,40 @@ export const HomeScreen: React.FC = () => {
 
   // Charge les donnees au demarrage
   useEffect(() => {
-    fetchConcerts();
+    loadData();
   }, []);
 
-  // Met a jour les concerts affiches selon l'onglet
+  const loadData = async () => {
+    fetchConcerts();
+    const artists = await artistService.getPopularArtists(8);
+    const venues = await venueService.getPopularVenues(6);
+    setPopularArtists(artists);
+    setTrendingVenues(venues);
+  };
+
+  // Met a jour les concerts affiches selon l'onglet et le genre
   useEffect(() => {
     const now = new Date();
     const today = now.toISOString().split('T')[0];
 
+    let filtered = [...concerts];
+
+    // Filtre par genre si selectionne
+    if (selectedGenre) {
+      filtered = filtered.filter(c =>
+        c.genre?.toLowerCase() === selectedGenre.toLowerCase() ||
+        c.artist.genres.some(g => g.toLowerCase() === selectedGenre.toLowerCase())
+      );
+    }
+
     switch (activeTab) {
       case 'tonight':
-        setDisplayedConcerts(concerts.filter(c => c.date === today));
+        setDisplayedConcerts(filtered.filter(c => c.date === today));
         break;
       case 'weekend':
         const { start, end } = getNextWeekendDates();
         setDisplayedConcerts(
-          concerts.filter(c => {
+          filtered.filter(c => {
             const concertDate = new Date(c.date);
             return concertDate >= start && concertDate <= end;
           })
@@ -105,13 +124,13 @@ export const HomeScreen: React.FC = () => {
         const weekFromNow = new Date();
         weekFromNow.setDate(weekFromNow.getDate() + 7);
         setDisplayedConcerts(
-          concerts.filter(c => new Date(c.date) <= weekFromNow)
+          filtered.filter(c => new Date(c.date) <= weekFromNow)
         );
         break;
       default:
-        setDisplayedConcerts(concerts);
+        setDisplayedConcerts(filtered);
     }
-  }, [activeTab, concerts]);
+  }, [activeTab, concerts, selectedGenre]);
 
   const handleConcertPress = (concert: Concert) => {
     navigation.navigate('ConcertDetail', { concertId: concert.id });
@@ -125,12 +144,27 @@ export const HomeScreen: React.FC = () => {
     }
   };
 
+  const handleArtistPress = (artist: Artist) => {
+    navigation.navigate('ArtistDetail', { artistId: artist.id });
+  };
+
+  const handleVenuePress = (venue: Venue) => {
+    navigation.navigate('VenueDetail', { venueId: venue.id });
+  };
+
   const handleRefresh = () => {
-    fetchConcerts();
+    loadData();
+  };
+
+  const handleGenrePress = (genre: string) => {
+    setSelectedGenre(selectedGenre === genre ? null : genre);
   };
 
   // Message contextuel selon l'onglet
   const getEmptyMessage = () => {
+    if (selectedGenre) {
+      return `Pas de concert ${selectedGenre} trouve.`;
+    }
     switch (activeTab) {
       case 'tonight':
         return 'Pas de concert ce soir. Repose-toi !';
@@ -163,15 +197,173 @@ export const HomeScreen: React.FC = () => {
 
   const counts = getCounts();
 
+  // Featured concert (first one for tonight or first one available)
+  const featuredConcert = displayedConcerts[0];
+
+  // Render featured concert card
+  const renderFeaturedConcert = () => {
+    if (!featuredConcert) return null;
+
+    return (
+      <TouchableOpacity
+        style={styles.featuredCard}
+        onPress={() => handleConcertPress(featuredConcert)}
+        activeOpacity={0.8}
+      >
+        <View style={styles.featuredOverlay}>
+          <View style={styles.featuredBadge}>
+            <Text style={styles.featuredBadgeText}>A LA UNE</Text>
+          </View>
+          <View style={styles.featuredContent}>
+            <Text style={styles.featuredArtist}>{featuredConcert.artist.name}</Text>
+            <Text style={styles.featuredVenue}>{featuredConcert.venue.name}</Text>
+            <View style={styles.featuredFooter}>
+              <Text style={styles.featuredTime}>
+                {activeTab === 'tonight' ? 'Ce soir' : formatDate(featuredConcert.date)} - {featuredConcert.startTime}
+              </Text>
+              {featuredConcert.price && (
+                <Text style={styles.featuredPrice}>
+                  Des {featuredConcert.price.min}{featuredConcert.price.currency}
+                </Text>
+              )}
+            </View>
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  // Render artist horizontal item
+  const renderArtistItem = ({ item }: { item: Artist }) => (
+    <TouchableOpacity
+      style={styles.artistCard}
+      onPress={() => handleArtistPress(item)}
+    >
+      <View style={styles.artistImageContainer}>
+        {item.imageUrl ? (
+          <Image source={{ uri: item.imageUrl }} style={styles.artistImage} />
+        ) : (
+          <View style={[styles.artistImage, styles.artistPlaceholder]}>
+            <Text style={styles.artistInitial}>{item.name.charAt(0)}</Text>
+          </View>
+        )}
+        {isFavorite('artist', item.id) && (
+          <View style={styles.artistFavoriteBadge}>
+            <Text style={styles.artistFavoriteIcon}>❤️</Text>
+          </View>
+        )}
+      </View>
+      <Text style={styles.artistName} numberOfLines={1}>{item.name}</Text>
+      <Text style={styles.artistGenre} numberOfLines={1}>
+        {item.genres[0] || 'Musique'}
+      </Text>
+    </TouchableOpacity>
+  );
+
+  // Render venue horizontal item
+  const renderVenueItem = ({ item }: { item: Venue }) => (
+    <TouchableOpacity
+      style={styles.venueCard}
+      onPress={() => handleVenuePress(item)}
+    >
+      <View style={styles.venueIcon}>
+        <Text style={styles.venueEmoji}>🎭</Text>
+      </View>
+      <Text style={styles.venueName} numberOfLines={1}>{item.name}</Text>
+      {item.arrondissement && (
+        <Text style={styles.venueLocation}>{item.arrondissement}</Text>
+      )}
+    </TouchableOpacity>
+  );
+
+  // Render header with sections
+  const renderHeader = () => (
+    <>
+      {/* Featured concert */}
+      {featuredConcert && renderFeaturedConcert()}
+
+      {/* Quick genre filters */}
+      <View style={styles.genreSection}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          {['Techno', 'Rock', 'Hip-Hop', 'Jazz', 'Electronic', 'Pop'].map((genre) => (
+            <TouchableOpacity
+              key={genre}
+              style={[
+                styles.genreChip,
+                selectedGenre === genre && styles.genreChipActive,
+              ]}
+              onPress={() => handleGenrePress(genre)}
+            >
+              <Text
+                style={[
+                  styles.genreChipText,
+                  selectedGenre === genre && styles.genreChipTextActive,
+                ]}
+              >
+                {genre}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+
+      {/* Popular artists */}
+      {popularArtists.length > 0 && (
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Artistes populaires</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Main' as any)}>
+              <Text style={styles.seeAllText}>Voir tout</Text>
+            </TouchableOpacity>
+          </View>
+          <FlatList
+            horizontal
+            data={popularArtists}
+            keyExtractor={item => item.id}
+            renderItem={renderArtistItem}
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.horizontalList}
+          />
+        </View>
+      )}
+
+      {/* Trending venues */}
+      {trendingVenues.length > 0 && (
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Salles tendances</Text>
+          </View>
+          <FlatList
+            horizontal
+            data={trendingVenues}
+            keyExtractor={item => item.id}
+            renderItem={renderVenueItem}
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.horizontalList}
+          />
+        </View>
+      )}
+
+      {/* Concerts section title */}
+      <View style={styles.concertsSectionHeader}>
+        <Text style={styles.concertsSectionTitle}>
+          {selectedGenre ? `Concerts ${selectedGenre}` : 'Tous les concerts'}
+        </Text>
+        <Text style={styles.concertsCount}>
+          {displayedConcerts.length} evenement{displayedConcerts.length > 1 ? 's' : ''}
+        </Text>
+      </View>
+    </>
+  );
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={colors.background} />
 
-      {/* Header minimaliste */}
+      {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <Text style={styles.logo}>{APP_CONFIG.name}</Text>
-          <Text style={styles.tagline}>{APP_CONFIG.tagline}</Text>
         </View>
         <TouchableOpacity
           style={styles.filterButton}
@@ -220,12 +412,9 @@ export const HomeScreen: React.FC = () => {
         ))}
       </View>
 
-      {/* Separateur */}
-      <View style={styles.separator} />
-
-      {/* Liste des concerts */}
+      {/* Liste des concerts avec header */}
       <FlatList
-        data={displayedConcerts}
+        data={displayedConcerts.slice(featuredConcert ? 1 : 0)}
         keyExtractor={item => item.id}
         renderItem={({ item }) => (
           <ConcertCard
@@ -235,6 +424,7 @@ export const HomeScreen: React.FC = () => {
             isFavorite={isFavorite('concert', item.id)}
           />
         )}
+        ListHeaderComponent={renderHeader}
         contentContainerStyle={styles.listContent}
         refreshControl={
           <RefreshControl
@@ -245,19 +435,42 @@ export const HomeScreen: React.FC = () => {
           />
         }
         ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyIcon}>
-              {activeTab === 'tonight' ? '😴' : '🔍'}
-            </Text>
-            <Text style={styles.emptyText}>
-              {isLoading ? 'Chargement...' : getEmptyMessage()}
-            </Text>
-          </View>
+          !featuredConcert ? (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyIcon}>
+                {activeTab === 'tonight' ? '😴' : '🔍'}
+              </Text>
+              <Text style={styles.emptyText}>
+                {isLoading ? 'Chargement...' : getEmptyMessage()}
+              </Text>
+            </View>
+          ) : null
         }
         showsVerticalScrollIndicator={false}
       />
     </SafeAreaView>
   );
+};
+
+// Format date helper
+const formatDate = (dateStr: string): string => {
+  const date = new Date(dateStr);
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  if (dateStr === today.toISOString().split('T')[0]) {
+    return 'Ce soir';
+  }
+  if (dateStr === tomorrow.toISOString().split('T')[0]) {
+    return 'Demain';
+  }
+
+  return date.toLocaleDateString('fr-FR', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  });
 };
 
 const styles = StyleSheet.create({
@@ -270,22 +483,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.md,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
   },
   headerLeft: {
     flex: 1,
   },
   logo: {
-    fontSize: 36,
+    fontSize: 32,
     fontWeight: '900',
     color: colors.textPrimary,
     letterSpacing: 2,
-  },
-  tagline: {
-    ...typography.bodySmall,
-    color: colors.textMuted,
-    marginTop: spacing.xs,
   },
   filterButton: {
     width: 44,
@@ -325,8 +533,8 @@ const styles = StyleSheet.create({
   tab: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.xs,
     borderRadius: borderRadius.lg,
     backgroundColor: colors.surface,
   },
@@ -334,28 +542,29 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
   },
   tabIcon: {
-    fontSize: 20,
-    marginBottom: spacing.xs,
+    fontSize: 18,
+    marginBottom: 2,
   },
   tabLabel: {
     ...typography.caption,
     color: colors.textSecondary,
     fontWeight: '600',
+    fontSize: 10,
   },
   tabLabelActive: {
     color: colors.textPrimary,
   },
   tabBadge: {
     position: 'absolute',
-    top: spacing.xs,
-    right: spacing.xs,
+    top: 2,
+    right: 2,
     backgroundColor: colors.surfaceLight,
     borderRadius: borderRadius.full,
-    minWidth: 20,
-    height: 20,
+    minWidth: 16,
+    height: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: spacing.xs,
+    paddingHorizontal: 4,
   },
   tabBadgeActive: {
     backgroundColor: 'rgba(255,255,255,0.3)',
@@ -364,18 +573,218 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.textPrimary,
     fontWeight: 'bold',
-    fontSize: 10,
-  },
-  separator: {
-    height: 1,
-    backgroundColor: colors.border,
-    marginHorizontal: spacing.md,
-    marginBottom: spacing.sm,
+    fontSize: 9,
   },
   listContent: {
-    paddingHorizontal: spacing.md,
     paddingBottom: spacing.xxl,
   },
+  // Featured concert
+  featuredCard: {
+    marginHorizontal: spacing.md,
+    marginTop: spacing.sm,
+    marginBottom: spacing.md,
+    height: 180,
+    borderRadius: borderRadius.xl,
+    backgroundColor: colors.surfaceLight,
+    overflow: 'hidden',
+  },
+  featuredOverlay: {
+    flex: 1,
+    backgroundColor: 'linear-gradient(180deg, transparent, rgba(0,0,0,0.8))',
+    padding: spacing.md,
+    justifyContent: 'space-between',
+  },
+  featuredBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: borderRadius.sm,
+  },
+  featuredBadgeText: {
+    ...typography.caption,
+    color: colors.textPrimary,
+    fontWeight: 'bold',
+    fontSize: 10,
+  },
+  featuredContent: {
+    marginTop: 'auto',
+  },
+  featuredArtist: {
+    ...typography.h1,
+    color: colors.textPrimary,
+    fontSize: 28,
+    marginBottom: 4,
+  },
+  featuredVenue: {
+    ...typography.body,
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
+  },
+  featuredFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  featuredTime: {
+    ...typography.bodySmall,
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  featuredPrice: {
+    ...typography.bodySmall,
+    color: colors.accent,
+    fontWeight: '600',
+  },
+  // Genre filters
+  genreSection: {
+    paddingVertical: spacing.sm,
+    paddingLeft: spacing.md,
+  },
+  genreChip: {
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.full,
+    marginRight: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.surface,
+  },
+  genreChipActive: {
+    backgroundColor: 'transparent',
+    borderColor: colors.primary,
+  },
+  genreChipText: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+  },
+  genreChipTextActive: {
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  // Sections
+  section: {
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  sectionTitle: {
+    ...typography.h3,
+    color: colors.textPrimary,
+  },
+  seeAllText: {
+    ...typography.bodySmall,
+    color: colors.primary,
+  },
+  horizontalList: {
+    paddingHorizontal: spacing.md,
+    gap: spacing.sm,
+  },
+  // Artist card
+  artistCard: {
+    width: 100,
+    alignItems: 'center',
+    marginRight: spacing.sm,
+  },
+  artistImageContainer: {
+    position: 'relative',
+    marginBottom: spacing.xs,
+  },
+  artistImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+  },
+  artistPlaceholder: {
+    backgroundColor: colors.surfaceLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  artistInitial: {
+    ...typography.h2,
+    color: colors.primary,
+  },
+  artistFavoriteBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: colors.background,
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  artistFavoriteIcon: {
+    fontSize: 10,
+  },
+  artistName: {
+    ...typography.bodySmall,
+    color: colors.textPrimary,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  artistGenre: {
+    ...typography.caption,
+    color: colors.textMuted,
+    textAlign: 'center',
+  },
+  // Venue card
+  venueCard: {
+    width: 120,
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    marginRight: spacing.sm,
+    alignItems: 'center',
+  },
+  venueIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.surfaceLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.xs,
+  },
+  venueEmoji: {
+    fontSize: 24,
+  },
+  venueName: {
+    ...typography.bodySmall,
+    color: colors.textPrimary,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 2,
+  },
+  venueLocation: {
+    ...typography.caption,
+    color: colors.textMuted,
+  },
+  // Concerts section
+  concertsSectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  concertsSectionTitle: {
+    ...typography.h3,
+    color: colors.textPrimary,
+  },
+  concertsCount: {
+    ...typography.bodySmall,
+    color: colors.textMuted,
+  },
+  // Empty state
   emptyContainer: {
     flex: 1,
     alignItems: 'center',

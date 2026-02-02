@@ -174,6 +174,13 @@ export const artistService = {
       a.genres.some(g => g.toLowerCase().includes(lowerQuery))
     );
   },
+
+  async getPopularArtists(limit: number = 10): Promise<Artist[]> {
+    await delay(200);
+    return mockArtists
+      .sort((a, b) => (b.popularity || 0) - (a.popularity || 0))
+      .slice(0, limit);
+  },
 };
 
 export const venueService = {
@@ -195,5 +202,13 @@ export const venueService = {
       v.address.toLowerCase().includes(lowerQuery) ||
       v.arrondissement?.toLowerCase().includes(lowerQuery)
     );
+  },
+
+  async getPopularVenues(limit: number = 10): Promise<Venue[]> {
+    await delay(200);
+    // Trie par capacite (les plus grandes salles sont souvent les plus populaires)
+    return mockVenues
+      .sort((a, b) => (b.capacity || 0) - (a.capacity || 0))
+      .slice(0, limit);
   },
 };
