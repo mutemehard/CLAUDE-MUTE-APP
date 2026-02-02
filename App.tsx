@@ -1,20 +1,160 @@
+import React from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { View, Text, StyleSheet } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import {
+  HomeScreen,
+  SearchScreen,
+  MapScreen,
+  FavoritesScreen,
+  ProfileScreen,
+  ConcertDetailScreen,
+} from './src/screens';
+import { colors } from './src/constants';
+import { RootStackParamList, TabParamList } from './src/types';
+
+const Stack = createNativeStackNavigator<RootStackParamList>();
+const Tab = createBottomTabNavigator<TabParamList>();
+
+// Theme sombre pour la navigation
+const DarkTheme = {
+  ...DefaultTheme,
+  dark: true,
+  colors: {
+    ...DefaultTheme.colors,
+    primary: colors.primary,
+    background: colors.background,
+    card: colors.surface,
+    text: colors.textPrimary,
+    border: colors.border,
+    notification: colors.primary,
+  },
+};
+
+// Composant pour les icones de tab
+const TabIcon: React.FC<{ name: string; focused: boolean }> = ({ name, focused }) => {
+  const icons: Record<string, string> = {
+    Home: '🏠',
+    Search: '🔍',
+    Map: '🗺️',
+    Favorites: '❤️',
+    Profile: '👤',
+  };
+
+  return (
+    <View style={[styles.tabIconContainer, focused && styles.tabIconContainerActive]}>
+      <Text style={[styles.tabIcon, focused && styles.tabIconActive]}>
+        {icons[name] || '•'}
+      </Text>
+    </View>
+  );
+};
+
+// Navigation par onglets
+const TabNavigator: React.FC = () => {
+  return (
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarStyle: styles.tabBar,
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textMuted,
+        tabBarShowLabel: true,
+        tabBarLabelStyle: styles.tabLabel,
+        tabBarIcon: ({ focused }) => (
+          <TabIcon name={route.name} focused={focused} />
+        ),
+      })}
+    >
+      <Tab.Screen
+        name="Home"
+        component={HomeScreen}
+        options={{ tabBarLabel: 'Accueil' }}
+      />
+      <Tab.Screen
+        name="Search"
+        component={SearchScreen}
+        options={{ tabBarLabel: 'Recherche' }}
+      />
+      <Tab.Screen
+        name="Map"
+        component={MapScreen}
+        options={{ tabBarLabel: 'Carte' }}
+      />
+      <Tab.Screen
+        name="Favorites"
+        component={FavoritesScreen}
+        options={{ tabBarLabel: 'Favoris' }}
+      />
+      <Tab.Screen
+        name="Profile"
+        component={ProfileScreen}
+        options={{ tabBarLabel: 'Profil' }}
+      />
+    </Tab.Navigator>
+  );
+};
+
+// Navigation principale
 export default function App() {
   return (
-    <View style={styles.container}>
-      <Text>Open up App.tsx to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <SafeAreaProvider>
+      <NavigationContainer theme={DarkTheme}>
+        <StatusBar style="light" />
+        <Stack.Navigator
+          screenOptions={{
+            headerShown: false,
+            animation: 'slide_from_right',
+            contentStyle: { backgroundColor: colors.background },
+          }}
+        >
+          <Stack.Screen name="Main" component={TabNavigator} />
+          <Stack.Screen
+            name="ConcertDetail"
+            component={ConcertDetailScreen}
+            options={{
+              animation: 'slide_from_bottom',
+              presentation: 'modal',
+            }}
+          />
+        </Stack.Navigator>
+      </NavigationContainer>
+    </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
+  tabBar: {
+    backgroundColor: colors.surface,
+    borderTopColor: colors.border,
+    borderTopWidth: 1,
+    height: 85,
+    paddingTop: 8,
+    paddingBottom: 25,
+  },
+  tabLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  tabIconContainer: {
+    width: 32,
+    height: 32,
     alignItems: 'center',
     justifyContent: 'center',
+    borderRadius: 16,
+  },
+  tabIconContainerActive: {
+    backgroundColor: `${colors.primary}20`,
+  },
+  tabIcon: {
+    fontSize: 20,
+  },
+  tabIconActive: {
+    transform: [{ scale: 1.1 }],
   },
 });

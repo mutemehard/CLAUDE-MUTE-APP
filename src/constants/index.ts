@@ -1,45 +1,72 @@
 export * from './theme';
 
-// Configuration générale
+// Configuration generale
 export const APP_CONFIG = {
-  name: 'ParisGigs',
+  name: 'MUTE',
+  tagline: 'Ne rate plus rien.',
   defaultCity: 'Paris',
   defaultCountry: 'France',
   defaultCoordinates: {
     latitude: 48.8566,
     longitude: 2.3522,
   },
-  defaultRadius: 10, // km
+  defaultRadius: 25, // km - pour couvrir la grande couronne
   maxSearchResults: 50,
   cacheTimeout: 5 * 60 * 1000, // 5 minutes
 };
 
+// Types d'evenements
+export const EVENT_TYPES = [
+  { value: 'concert', label: 'Concert' },
+  { value: 'dj_set', label: 'DJ Set' },
+  { value: 'club', label: 'Soiree club' },
+  { value: 'festival', label: 'Festival' },
+  { value: 'live', label: 'Live' },
+  { value: 'free', label: 'Gratuit' },
+] as const;
+
 // Genres musicaux disponibles
 export const MUSIC_GENRES = [
-  'Rock',
-  'Pop',
+  'Techno',
+  'House',
   'Electronic',
   'Hip-Hop',
-  'Jazz',
-  'Classical',
-  'Metal',
+  'Rap',
+  'Rock',
+  'Pop',
   'Indie',
+  'Jazz',
   'R&B',
-  'Folk',
-  'Reggae',
-  'Blues',
   'Soul',
   'Funk',
+  'Metal',
   'Punk',
-  'Alternative',
-  'World',
+  'Reggae',
+  'Afro',
   'Latin',
+  'Classical',
+  'World',
+  'Disco',
+  'Drum & Bass',
+  'Trance',
 ] as const;
 
 // Arrondissements de Paris
 export const PARIS_ARRONDISSEMENTS = [
   '1er', '2e', '3e', '4e', '5e', '6e', '7e', '8e', '9e', '10e',
   '11e', '12e', '13e', '14e', '15e', '16e', '17e', '18e', '19e', '20e',
+] as const;
+
+// Departements Ile-de-France (grande couronne)
+export const IDF_DEPARTMENTS = [
+  { code: '75', name: 'Paris' },
+  { code: '92', name: 'Hauts-de-Seine' },
+  { code: '93', name: 'Seine-Saint-Denis' },
+  { code: '94', name: 'Val-de-Marne' },
+  { code: '77', name: 'Seine-et-Marne' },
+  { code: '78', name: 'Yvelines' },
+  { code: '91', name: 'Essonne' },
+  { code: '95', name: "Val-d'Oise" },
 ] as const;
 
 // Options de tri

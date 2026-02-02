@@ -95,7 +95,7 @@ export interface UserPreferences {
 }
 
 // Navigation types
-export type RootTabParamList = {
+export type TabParamList = {
   Home: undefined;
   Search: undefined;
   Map: undefined;
@@ -104,9 +104,34 @@ export type RootTabParamList = {
 };
 
 export type RootStackParamList = {
-  MainTabs: undefined;
+  Main: undefined;
   ConcertDetail: { concertId: string };
   ArtistDetail: { artistId: string };
   VenueDetail: { venueId: string };
   Filters: undefined;
 };
+
+// Type pour l'historique des concerts vus
+export interface AttendedConcert {
+  concertId: string;
+  artistName: string;
+  venueName: string;
+  date: string;
+  addedAt: string;
+  rating?: number; // 1-5
+  notes?: string;
+  photos?: string[];
+}
+
+// Profil utilisateur avec historique
+export interface UserProfile {
+  id?: string;
+  email?: string;
+  displayName?: string;
+  avatarUrl?: string;
+  preferences: UserPreferences;
+  attendedConcerts: AttendedConcert[];
+  favoriteArtists: string[];
+  favoriteVenues: string[];
+  createdAt?: string;
+}

@@ -1,39 +1,47 @@
-// Theme et constantes de style
+// Theme MUTE - Style Dice (dark, minimal, clean)
 
 export const colors = {
   // Couleurs principales
-  primary: '#FF6B6B',      // Rouge corail - accent principal
-  secondary: '#4ECDC4',    // Turquoise - accent secondaire
-  accent: '#FFE66D',       // Jaune - highlights
+  primary: '#FF4D4D',      // Rouge vif - accent principal (style Dice)
+  secondary: '#FF8C42',    // Orange - accent secondaire
+  accent: '#FFFFFF',       // Blanc pour highlights
 
-  // Backgrounds
-  background: '#1A1A2E',   // Fond sombre principal
-  surface: '#16213E',      // Cartes et surfaces
-  surfaceLight: '#0F3460', // Surface légèrement plus claire
+  // Backgrounds - Tres sombre style Dice
+  background: '#000000',   // Noir pur
+  surface: '#121212',      // Cartes et surfaces
+  surfaceLight: '#1C1C1E', // Surface legerement plus claire
+  surfaceHover: '#2C2C2E', // Hover state
 
   // Textes
   textPrimary: '#FFFFFF',
-  textSecondary: '#B8B8D1',
-  textMuted: '#6B6B8D',
+  textSecondary: '#A1A1A6',
+  textMuted: '#636366',
 
-  // États
-  success: '#4ECDC4',
-  warning: '#FFE66D',
-  error: '#FF6B6B',
+  // Etats
+  success: '#30D158',
+  warning: '#FFD60A',
+  error: '#FF453A',
+
+  // Bordures
+  border: '#2C2C2E',
+  borderLight: '#3A3A3C',
 
   // Genres (pour les tags)
   genreColors: {
-    rock: '#E74C3C',
-    pop: '#9B59B6',
-    electronic: '#3498DB',
-    hiphop: '#F39C12',
-    jazz: '#1ABC9C',
-    classical: '#34495E',
-    metal: '#2C3E50',
-    indie: '#E67E22',
-    rnb: '#8E44AD',
-    folk: '#27AE60',
-    other: '#95A5A6',
+    rock: '#FF453A',
+    pop: '#BF5AF2',
+    electronic: '#0A84FF',
+    hiphop: '#FF9F0A',
+    jazz: '#30D158',
+    classical: '#5E5CE6',
+    metal: '#8E8E93',
+    indie: '#FF6482',
+    rnb: '#AF52DE',
+    folk: '#32D74B',
+    techno: '#0A84FF',
+    house: '#5AC8FA',
+    rap: '#FF9500',
+    other: '#636366',
   } as Record<string, string>,
 };
 

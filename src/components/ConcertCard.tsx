@@ -5,20 +5,36 @@ import {
   StyleSheet,
   TouchableOpacity,
   Image,
+  Dimensions,
 } from 'react-native';
 import { Concert } from '../types';
 import { colors, spacing, borderRadius, typography } from '../constants';
+
+const { width } = Dimensions.get('window');
+const CARD_WIDTH = width - spacing.md * 2;
 
 interface ConcertCardProps {
   concert: Concert;
   onPress: () => void;
   onFavoritePress?: () => void;
   isFavorite?: boolean;
+  variant?: 'default' | 'compact' | 'large';
 }
 
-// Formate la date en français
+// Formate la date en francais
 const formatDate = (dateStr: string): string => {
   const date = new Date(dateStr);
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  if (dateStr === today.toISOString().split('T')[0]) {
+    return 'Ce soir';
+  }
+  if (dateStr === tomorrow.toISOString().split('T')[0]) {
+    return 'Demain';
+  }
+
   const options: Intl.DateTimeFormatOptions = {
     weekday: 'short',
     day: 'numeric',
@@ -27,7 +43,7 @@ const formatDate = (dateStr: string): string => {
   return date.toLocaleDateString('fr-FR', options);
 };
 
-// Vérifie si c'est aujourd'hui
+// Verifie si c'est aujourd'hui
 const isToday = (dateStr: string): boolean => {
   const today = new Date().toISOString().split('T')[0];
   return dateStr === today;
@@ -38,11 +54,77 @@ export const ConcertCard: React.FC<ConcertCardProps> = ({
   onPress,
   onFavoritePress,
   isFavorite = false,
+  variant = 'default',
 }) => {
   const today = isToday(concert.date);
 
+  if (variant === 'large') {
+    return (
+      <TouchableOpacity style={styles.largeContainer} onPress={onPress} activeOpacity={0.9}>
+        {/* Image de fond */}
+        <View style={styles.largeImageContainer}>
+          {concert.imageUrl ? (
+            <Image source={{ uri: concert.imageUrl }} style={styles.largeImage} />
+          ) : (
+            <View style={[styles.largeImage, styles.imagePlaceholder]}>
+              <Text style={styles.largePlaceholderText}>
+                {concert.artist.name.charAt(0)}
+              </Text>
+            </View>
+          )}
+          <View style={styles.largeGradient} />
+
+          {/* Badges */}
+          <View style={styles.largeBadgeContainer}>
+            {today && (
+              <View style={styles.todayBadge}>
+                <Text style={styles.badgeText}>CE SOIR</Text>
+              </View>
+            )}
+            {concert.isSoldOut && (
+              <View style={styles.soldOutBadge}>
+                <Text style={styles.badgeText}>COMPLET</Text>
+              </View>
+            )}
+          </View>
+
+          {/* Contenu sur l'image */}
+          <View style={styles.largeContent}>
+            <Text style={styles.largeArtistName} numberOfLines={2}>
+              {concert.artist.name}
+            </Text>
+            <View style={styles.largeInfoRow}>
+              <Text style={styles.largeVenue}>{concert.venue.name}</Text>
+              <Text style={styles.largeDot}>·</Text>
+              <Text style={styles.largeDate}>{formatDate(concert.date)}</Text>
+              <Text style={styles.largeDot}>·</Text>
+              <Text style={styles.largeTime}>{concert.startTime}</Text>
+            </View>
+            {concert.price && (
+              <Text style={styles.largePrice}>
+                des {concert.price.min} {concert.price.currency}
+              </Text>
+            )}
+          </View>
+
+          {/* Favori */}
+          {onFavoritePress && (
+            <TouchableOpacity
+              style={styles.largeFavoriteButton}
+              onPress={onFavoritePress}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Text style={styles.favoriteIcon}>{isFavorite ? '❤️' : '🤍'}</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </TouchableOpacity>
+    );
+  }
+
+  // Default card style
   return (
-    <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.8}>
+    <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.9}>
       {/* Image */}
       <View style={styles.imageContainer}>
         {concert.imageUrl ? (
@@ -55,53 +137,48 @@ export const ConcertCard: React.FC<ConcertCardProps> = ({
           </View>
         )}
         {today && (
-          <View style={styles.todayBadge}>
-            <Text style={styles.todayText}>CE SOIR</Text>
-          </View>
-        )}
-        {concert.isSoldOut && (
-          <View style={styles.soldOutBadge}>
-            <Text style={styles.soldOutText}>COMPLET</Text>
+          <View style={styles.todayBadgeSmall}>
+            <Text style={styles.badgeTextSmall}>CE SOIR</Text>
           </View>
         )}
       </View>
 
       {/* Contenu */}
       <View style={styles.content}>
-        {/* Artiste */}
-        <Text style={styles.artistName} numberOfLines={1}>
-          {concert.artist.name}
-        </Text>
+        <View style={styles.contentTop}>
+          {/* Artiste */}
+          <Text style={styles.artistName} numberOfLines={1}>
+            {concert.artist.name}
+          </Text>
 
-        {/* Genre */}
-        {concert.genre && (
-          <View style={styles.genreContainer}>
-            <Text style={styles.genre}>{concert.genre}</Text>
-          </View>
-        )}
+          {/* Genre tag */}
+          {concert.genre && (
+            <View style={[
+              styles.genreTag,
+              { backgroundColor: colors.genreColors[concert.genre.toLowerCase()] || colors.genreColors.other }
+            ]}>
+              <Text style={styles.genreText}>{concert.genre}</Text>
+            </View>
+          )}
+        </View>
 
         {/* Salle */}
         <Text style={styles.venue} numberOfLines={1}>
           {concert.venue.name}
         </Text>
 
-        {/* Date & Heure */}
-        <View style={styles.dateRow}>
-          <Text style={styles.date}>{formatDate(concert.date)}</Text>
-          <Text style={styles.time}>{concert.startTime}</Text>
+        {/* Date & Heure & Prix */}
+        <View style={styles.bottomRow}>
+          <View style={styles.dateTimeContainer}>
+            <Text style={styles.date}>{formatDate(concert.date)}</Text>
+            <Text style={styles.time}>{concert.startTime}</Text>
+          </View>
+          {concert.price && (
+            <Text style={styles.price}>
+              {concert.price.min === 0 ? 'Gratuit' : `${concert.price.min}€`}
+            </Text>
+          )}
         </View>
-
-        {/* Prix */}
-        {concert.price && (
-          <Text style={styles.price}>
-            {concert.price.min === concert.price.max
-              ? `${concert.price.min} ${concert.price.currency}`
-              : `${concert.price.min} - ${concert.price.max} ${concert.price.currency}`}
-          </Text>
-        )}
-
-        {/* Source */}
-        <Text style={styles.source}>{concert.source}</Text>
       </View>
 
       {/* Bouton favori */}
@@ -111,7 +188,7 @@ export const ConcertCard: React.FC<ConcertCardProps> = ({
           onPress={onFavoritePress}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Text style={styles.favoriteIcon}>{isFavorite ? '♥' : '♡'}</Text>
+          <Text style={styles.favoriteIconSmall}>{isFavorite ? '❤️' : '🤍'}</Text>
         </TouchableOpacity>
       )}
     </TouchableOpacity>
@@ -119,17 +196,19 @@ export const ConcertCard: React.FC<ConcertCardProps> = ({
 };
 
 const styles = StyleSheet.create({
+  // Default card
   container: {
     backgroundColor: colors.surface,
     borderRadius: borderRadius.lg,
-    marginHorizontal: spacing.md,
     marginVertical: spacing.sm,
     overflow: 'hidden',
     flexDirection: 'row',
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   imageContainer: {
-    width: 120,
-    height: 140,
+    width: 100,
+    height: 120,
     position: 'relative',
   },
   image: {
@@ -142,98 +221,195 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   placeholderText: {
-    fontSize: 40,
+    fontSize: 32,
     fontWeight: 'bold',
     color: colors.textMuted,
   },
-  todayBadge: {
+  todayBadgeSmall: {
     position: 'absolute',
     top: spacing.xs,
     left: spacing.xs,
     backgroundColor: colors.primary,
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: spacing.xs,
     paddingVertical: 2,
     borderRadius: borderRadius.sm,
   },
-  todayText: {
+  badgeTextSmall: {
     color: colors.textPrimary,
-    fontSize: 10,
+    fontSize: 8,
     fontWeight: 'bold',
-  },
-  soldOutBadge: {
-    position: 'absolute',
-    bottom: spacing.xs,
-    left: spacing.xs,
-    backgroundColor: colors.textMuted,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: borderRadius.sm,
-  },
-  soldOutText: {
-    color: colors.textPrimary,
-    fontSize: 10,
-    fontWeight: 'bold',
+    letterSpacing: 0.5,
   },
   content: {
     flex: 1,
     padding: spacing.md,
     justifyContent: 'space-between',
   },
-  artistName: {
-    ...typography.h3,
-    color: colors.textPrimary,
+  contentTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: spacing.xs,
   },
-  genreContainer: {
-    alignSelf: 'flex-start',
-    backgroundColor: colors.surfaceLight,
+  artistName: {
+    ...typography.body,
+    color: colors.textPrimary,
+    fontWeight: '700',
+    flex: 1,
+    marginRight: spacing.sm,
+  },
+  genreTag: {
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
-    borderRadius: borderRadius.sm,
-    marginBottom: spacing.xs,
+    borderRadius: borderRadius.full,
   },
-  genre: {
-    ...typography.caption,
-    color: colors.secondary,
+  genreText: {
+    fontSize: 10,
+    color: colors.textPrimary,
+    fontWeight: '600',
   },
   venue: {
     ...typography.bodySmall,
     color: colors.textSecondary,
-    marginBottom: spacing.xs,
+    marginBottom: spacing.sm,
   },
-  dateRow: {
+  bottomRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.xs,
+    justifyContent: 'space-between',
+  },
+  dateTimeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   date: {
-    ...typography.bodySmall,
-    color: colors.textPrimary,
+    ...typography.caption,
+    color: colors.primary,
     fontWeight: '600',
     marginRight: spacing.sm,
   },
   time: {
-    ...typography.bodySmall,
-    color: colors.textSecondary,
-  },
-  price: {
-    ...typography.bodySmall,
-    color: colors.accent,
-    fontWeight: '600',
-  },
-  source: {
     ...typography.caption,
     color: colors.textMuted,
-    textTransform: 'capitalize',
-    marginTop: spacing.xs,
+  },
+  price: {
+    ...typography.caption,
+    color: colors.textPrimary,
+    fontWeight: '700',
+    backgroundColor: colors.surfaceLight,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: borderRadius.sm,
   },
   favoriteButton: {
     position: 'absolute',
     top: spacing.sm,
     right: spacing.sm,
   },
-  favoriteIcon: {
-    fontSize: 24,
+  favoriteIconSmall: {
+    fontSize: 18,
+  },
+
+  // Large card
+  largeContainer: {
+    marginVertical: spacing.sm,
+    borderRadius: borderRadius.xl,
+    overflow: 'hidden',
+  },
+  largeImageContainer: {
+    width: CARD_WIDTH,
+    height: 200,
+    position: 'relative',
+  },
+  largeImage: {
+    width: '100%',
+    height: '100%',
+  },
+  largePlaceholderText: {
+    fontSize: 64,
+    fontWeight: 'bold',
+    color: colors.textMuted,
+  },
+  largeGradient: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  largeBadgeContainer: {
+    position: 'absolute',
+    top: spacing.md,
+    left: spacing.md,
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  todayBadge: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.sm,
+  },
+  soldOutBadge: {
+    backgroundColor: colors.textMuted,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.sm,
+  },
+  badgeText: {
+    color: colors.textPrimary,
+    fontSize: 11,
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
+  },
+  largeContent: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: spacing.md,
+  },
+  largeArtistName: {
+    ...typography.h2,
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
+  },
+  largeInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    marginBottom: spacing.xs,
+  },
+  largeVenue: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+  },
+  largeDot: {
+    color: colors.textMuted,
+    marginHorizontal: spacing.xs,
+  },
+  largeDate: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+  },
+  largeTime: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+  },
+  largePrice: {
+    ...typography.caption,
     color: colors.primary,
+    fontWeight: '600',
+  },
+  largeFavoriteButton: {
+    position: 'absolute',
+    top: spacing.md,
+    right: spacing.md,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: borderRadius.full,
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  favoriteIcon: {
+    fontSize: 20,
   },
 });

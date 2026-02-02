@@ -13,36 +13,85 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ConcertCard } from '../components/ConcertCard';
 import { useStore } from '../hooks';
-import { colors, spacing, typography, APP_CONFIG } from '../constants';
+import { colors, spacing, typography, borderRadius, APP_CONFIG } from '../constants';
 import { RootStackParamList, Concert } from '../types';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-// Onglets de filtrage rapide
-const quickFilters = [
-  { id: 'all', label: 'Tous' },
-  { id: 'today', label: "Aujourd'hui" },
-  { id: 'week', label: 'Cette semaine' },
-  { id: 'popular', label: 'Populaires' },
+// Onglets principaux style Dice
+const mainTabs = [
+  { id: 'tonight', label: 'Ce soir', icon: '🌙' },
+  { id: 'weekend', label: 'Week-end', icon: '🎉' },
+  { id: 'week', label: 'Semaine', icon: '📅' },
+  { id: 'all', label: 'Tout', icon: '🎵' },
 ];
+
+// Fonction pour verifier si c'est le week-end
+const isWeekend = (date: Date): boolean => {
+  const day = date.getDay();
+  return day === 5 || day === 6 || day === 0; // Vendredi, Samedi, Dimanche
+};
+
+// Fonction pour obtenir les dates du prochain week-end
+const getNextWeekendDates = (): { start: Date; end: Date } => {
+  const now = new Date();
+  const dayOfWeek = now.getDay();
+
+  // Jours jusqu'a vendredi
+  const daysUntilFriday = dayOfWeek <= 5 ? 5 - dayOfWeek : 6;
+
+  const friday = new Date(now);
+  friday.setDate(now.getDate() + daysUntilFriday);
+  friday.setHours(0, 0, 0, 0);
+
+  const sunday = new Date(friday);
+  sunday.setDate(friday.getDate() + 2);
+  sunday.setHours(23, 59, 59, 999);
+
+  // Si on est deja vendredi-dimanche, on prend ce week-end
+  if (dayOfWeek >= 5 || dayOfWeek === 0) {
+    const thisWeekendStart = new Date(now);
+    thisWeekendStart.setHours(0, 0, 0, 0);
+
+    const daysUntilSunday = dayOfWeek === 0 ? 0 : 7 - dayOfWeek;
+    const thisWeekendEnd = new Date(now);
+    thisWeekendEnd.setDate(now.getDate() + daysUntilSunday);
+    thisWeekendEnd.setHours(23, 59, 59, 999);
+
+    return { start: thisWeekendStart, end: thisWeekendEnd };
+  }
+
+  return { start: friday, end: sunday };
+};
 
 export const HomeScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
-  const { concerts, todayConcerts, isLoading, fetchConcerts, fetchTodayConcerts, isFavorite, addFavorite, removeFavorite } = useStore();
-  const [activeFilter, setActiveFilter] = useState('all');
+  const { concerts, isLoading, fetchConcerts, isFavorite, addFavorite, removeFavorite } = useStore();
+  const [activeTab, setActiveTab] = useState('tonight');
   const [displayedConcerts, setDisplayedConcerts] = useState<Concert[]>([]);
 
-  // Charge les données au démarrage
+  // Charge les donnees au demarrage
   useEffect(() => {
     fetchConcerts();
-    fetchTodayConcerts();
   }, []);
 
-  // Met à jour les concerts affichés selon le filtre
+  // Met a jour les concerts affiches selon l'onglet
   useEffect(() => {
-    switch (activeFilter) {
-      case 'today':
-        setDisplayedConcerts(todayConcerts);
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+
+    switch (activeTab) {
+      case 'tonight':
+        setDisplayedConcerts(concerts.filter(c => c.date === today));
+        break;
+      case 'weekend':
+        const { start, end } = getNextWeekendDates();
+        setDisplayedConcerts(
+          concerts.filter(c => {
+            const concertDate = new Date(c.date);
+            return concertDate >= start && concertDate <= end;
+          })
+        );
         break;
       case 'week':
         const weekFromNow = new Date();
@@ -51,15 +100,10 @@ export const HomeScreen: React.FC = () => {
           concerts.filter(c => new Date(c.date) <= weekFromNow)
         );
         break;
-      case 'popular':
-        setDisplayedConcerts(
-          [...concerts].sort((a, b) => (b.artist.popularity || 0) - (a.artist.popularity || 0))
-        );
-        break;
       default:
         setDisplayedConcerts(concerts);
     }
-  }, [activeFilter, concerts, todayConcerts]);
+  }, [activeTab, concerts]);
 
   const handleConcertPress = (concert: Concert) => {
     navigation.navigate('ConcertDetail', { concertId: concert.id });
@@ -75,65 +119,88 @@ export const HomeScreen: React.FC = () => {
 
   const handleRefresh = () => {
     fetchConcerts();
-    fetchTodayConcerts();
   };
+
+  // Message contextuel selon l'onglet
+  const getEmptyMessage = () => {
+    switch (activeTab) {
+      case 'tonight':
+        return 'Pas de concert ce soir. Repose-toi !';
+      case 'weekend':
+        return 'Rien de prevu ce week-end pour l\'instant.';
+      case 'week':
+        return 'Semaine calme. Ca arrive !';
+      default:
+        return 'Aucun evenement trouve.';
+    }
+  };
+
+  // Compte pour chaque onglet
+  const getCounts = () => {
+    const today = new Date().toISOString().split('T')[0];
+    const { start, end } = getNextWeekendDates();
+    const weekFromNow = new Date();
+    weekFromNow.setDate(weekFromNow.getDate() + 7);
+
+    return {
+      tonight: concerts.filter(c => c.date === today).length,
+      weekend: concerts.filter(c => {
+        const d = new Date(c.date);
+        return d >= start && d <= end;
+      }).length,
+      week: concerts.filter(c => new Date(c.date) <= weekFromNow).length,
+      all: concerts.length,
+    };
+  };
+
+  const counts = getCounts();
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={colors.background} />
 
-      {/* Header */}
+      {/* Header minimaliste */}
       <View style={styles.header}>
-        <Text style={styles.title}>ParisGigs</Text>
-        <Text style={styles.subtitle}>Quoi faire ce soir ?</Text>
+        <Text style={styles.logo}>{APP_CONFIG.name}</Text>
+        <Text style={styles.tagline}>{APP_CONFIG.tagline}</Text>
       </View>
 
-      {/* Filtres rapides */}
-      <View style={styles.filtersContainer}>
-        <FlatList
-          horizontal
-          data={quickFilters}
-          keyExtractor={item => item.id}
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filtersList}
-          renderItem={({ item }) => (
-            <TouchableOpacity
+      {/* Onglets principaux */}
+      <View style={styles.tabsContainer}>
+        {mainTabs.map(tab => (
+          <TouchableOpacity
+            key={tab.id}
+            style={[
+              styles.tab,
+              activeTab === tab.id && styles.tabActive,
+            ]}
+            onPress={() => setActiveTab(tab.id)}
+          >
+            <Text style={styles.tabIcon}>{tab.icon}</Text>
+            <Text
               style={[
-                styles.filterChip,
-                activeFilter === item.id && styles.filterChipActive,
+                styles.tabLabel,
+                activeTab === tab.id && styles.tabLabelActive,
               ]}
-              onPress={() => setActiveFilter(item.id)}
             >
-              <Text
-                style={[
-                  styles.filterText,
-                  activeFilter === item.id && styles.filterTextActive,
-                ]}
-              >
-                {item.label}
-              </Text>
-            </TouchableOpacity>
-          )}
-        />
+              {tab.label}
+            </Text>
+            {counts[tab.id as keyof typeof counts] > 0 && (
+              <View style={[
+                styles.tabBadge,
+                activeTab === tab.id && styles.tabBadgeActive,
+              ]}>
+                <Text style={styles.tabBadgeText}>
+                  {counts[tab.id as keyof typeof counts]}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        ))}
       </View>
 
-      {/* Stats rapides */}
-      <View style={styles.statsContainer}>
-        <View style={styles.stat}>
-          <Text style={styles.statNumber}>{todayConcerts.length}</Text>
-          <Text style={styles.statLabel}>Ce soir</Text>
-        </View>
-        <View style={styles.statDivider} />
-        <View style={styles.stat}>
-          <Text style={styles.statNumber}>{concerts.length}</Text>
-          <Text style={styles.statLabel}>A venir</Text>
-        </View>
-        <View style={styles.statDivider} />
-        <View style={styles.stat}>
-          <Text style={styles.statNumber}>{APP_CONFIG.defaultCity}</Text>
-          <Text style={styles.statLabel}>Ville</Text>
-        </View>
-      </View>
+      {/* Separateur */}
+      <View style={styles.separator} />
 
       {/* Liste des concerts */}
       <FlatList
@@ -158,11 +225,15 @@ export const HomeScreen: React.FC = () => {
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
+            <Text style={styles.emptyIcon}>
+              {activeTab === 'tonight' ? '😴' : '🔍'}
+            </Text>
             <Text style={styles.emptyText}>
-              {isLoading ? 'Chargement...' : 'Aucun concert trouve'}
+              {isLoading ? 'Chargement...' : getEmptyMessage()}
             </Text>
           </View>
         }
+        showsVerticalScrollIndicator={false}
       />
     </SafeAreaView>
   );
@@ -174,91 +245,94 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   header: {
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.md,
   },
-  title: {
-    ...typography.h1,
-    color: colors.primary,
+  logo: {
+    fontSize: 36,
+    fontWeight: '900',
+    color: colors.textPrimary,
+    letterSpacing: 2,
   },
-  subtitle: {
-    ...typography.body,
-    color: colors.textSecondary,
+  tagline: {
+    ...typography.bodySmall,
+    color: colors.textMuted,
     marginTop: spacing.xs,
   },
-  filtersContainer: {
-    marginBottom: spacing.sm,
-  },
-  filtersList: {
-    paddingHorizontal: spacing.md,
-    gap: spacing.sm,
-  },
-  filterChip: {
+  tabsContainer: {
+    flexDirection: 'row',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.surface,
-    marginRight: spacing.sm,
+    gap: spacing.sm,
   },
-  filterChipActive: {
-    backgroundColor: colors.primary,
-  },
-  filterText: {
-    ...typography.bodySmall,
-    color: colors.textSecondary,
-  },
-  filterTextActive: {
-    color: colors.textPrimary,
-    fontWeight: '600',
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.md,
-    marginHorizontal: spacing.md,
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
-    marginBottom: spacing.md,
-  },
-  stat: {
+  tab: {
     flex: 1,
     alignItems: 'center',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
+    borderRadius: borderRadius.lg,
+    backgroundColor: colors.surface,
   },
-  statNumber: {
-    ...typography.h2,
+  tabActive: {
+    backgroundColor: colors.primary,
+  },
+  tabIcon: {
+    fontSize: 20,
+    marginBottom: spacing.xs,
+  },
+  tabLabel: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    fontWeight: '600',
+  },
+  tabLabelActive: {
     color: colors.textPrimary,
   },
-  statLabel: {
-    ...typography.caption,
-    color: colors.textMuted,
-    marginTop: 2,
-  },
-  statDivider: {
-    width: 1,
-    height: 30,
+  tabBadge: {
+    position: 'absolute',
+    top: spacing.xs,
+    right: spacing.xs,
     backgroundColor: colors.surfaceLight,
+    borderRadius: borderRadius.full,
+    minWidth: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xs,
+  },
+  tabBadgeActive: {
+    backgroundColor: 'rgba(255,255,255,0.3)',
+  },
+  tabBadgeText: {
+    ...typography.caption,
+    color: colors.textPrimary,
+    fontWeight: 'bold',
+    fontSize: 10,
+  },
+  separator: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.sm,
   },
   listContent: {
+    paddingHorizontal: spacing.md,
     paddingBottom: spacing.xxl,
   },
   emptyContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing.xxl,
+    paddingVertical: spacing.xxl * 2,
+  },
+  emptyIcon: {
+    fontSize: 48,
+    marginBottom: spacing.md,
   },
   emptyText: {
     ...typography.body,
     color: colors.textMuted,
+    textAlign: 'center',
   },
 });
-
-const borderRadius = {
-  sm: 4,
-  md: 8,
-  lg: 16,
-  xl: 24,
-  full: 9999,
-};
