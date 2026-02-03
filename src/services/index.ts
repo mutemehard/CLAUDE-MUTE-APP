@@ -10,3 +10,6 @@ export type { NotificationSettings } from './notificationService';
 
 // Storage
 export { storageService } from './storageService';
+
+// Location
+export { locationService } from './locationService';
