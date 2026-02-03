@@ -8,14 +8,13 @@ import {
   Image,
   SafeAreaView,
   Linking,
-  Share,
   Alert,
-  FlatList,
 } from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useStore } from '../hooks';
 import { concertService, notificationService } from '../services';
+import { shareConcert } from '../utils';
 import { colors, spacing, typography, borderRadius } from '../constants';
 import { RootStackParamList, Concert } from '../types';
 
@@ -118,13 +117,9 @@ export const ConcertDetailScreen: React.FC = () => {
 
   const handleShare = async () => {
     if (!concert) return;
-    try {
-      await Share.share({
-        message: `${concert.artist.name} en concert @ ${concert.venue.name} le ${formatDate(concert.date)} - ${concert.startTime}\n\nDecouvre ce concert sur MUTE !`,
-        title: `Concert: ${concert.artist.name}`,
-      });
-    } catch (error) {
-      // Ignore
+    const result = await shareConcert(concert);
+    if (!result.success && result.error) {
+      Alert.alert('Erreur', result.error);
     }
   };
 

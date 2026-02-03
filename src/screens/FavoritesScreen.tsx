@@ -6,12 +6,14 @@ import {
   FlatList,
   TouchableOpacity,
   SafeAreaView,
+  Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ConcertCard } from '../components/ConcertCard';
 import { useStore } from '../hooks';
 import { concertService, artistService, venueService } from '../services';
+import { shareConcerts } from '../utils';
 import { colors, spacing, typography, borderRadius, APP_CONFIG } from '../constants';
 import { RootStackParamList, Concert, Artist, Venue } from '../types';
 
@@ -101,6 +103,17 @@ export const FavoritesScreen: React.FC = () => {
     navigation.navigate('VenueDetail', { venueId: venue.id });
   };
 
+  const handleShareFavorites = async () => {
+    if (favoriteConcerts.length === 0) {
+      Alert.alert('Aucun concert', 'Ajoute des concerts a tes favoris pour les partager');
+      return;
+    }
+    const result = await shareConcerts(favoriteConcerts);
+    if (!result.success && result.error) {
+      Alert.alert('Erreur', result.error);
+    }
+  };
+
   const renderEmptyState = () => {
     const emptyConfig = {
       concerts: {
@@ -185,8 +198,21 @@ export const FavoritesScreen: React.FC = () => {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.logo}>{APP_CONFIG.name}</Text>
-        <Text style={styles.subtitle}>Mes favoris</Text>
+        <View style={styles.headerRow}>
+          <View>
+            <Text style={styles.logo}>{APP_CONFIG.name}</Text>
+            <Text style={styles.subtitle}>Mes favoris</Text>
+          </View>
+          {activeTab === 'concerts' && favoriteConcerts.length > 0 && (
+            <TouchableOpacity
+              style={styles.shareButton}
+              onPress={handleShareFavorites}
+            >
+              <Text style={styles.shareButtonIcon}>📤</Text>
+              <Text style={styles.shareButtonText}>Partager</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       {/* Tabs */}
@@ -287,6 +313,28 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.lg,
     paddingBottom: spacing.md,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  shareButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.full,
+    gap: spacing.xs,
+  },
+  shareButtonIcon: {
+    fontSize: 16,
+  },
+  shareButtonText: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    fontWeight: '600',
   },
   logo: {
     fontSize: 36,
