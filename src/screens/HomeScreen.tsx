@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -15,7 +15,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ConcertCard } from '../components/ConcertCard';
-import { useStore } from '../hooks';
+import { useStore, useLocation } from '../hooks';
 import { colors, spacing, typography, borderRadius, APP_CONFIG, MUSIC_GENRES } from '../constants';
 import { RootStackParamList, Concert, Artist, Venue } from '../types';
 import { artistService, venueService } from '../services';
@@ -65,11 +65,23 @@ const getNextWeekendDates = (): { start: Date; end: Date } => {
 export const HomeScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const { concerts, filters, isLoading, fetchConcerts, isFavorite, addFavorite, removeFavorite } = useStore();
+  const { location, getDistanceFromUser, formatDistance, requestPermission } = useLocation();
   const [activeTab, setActiveTab] = useState('tonight');
   const [displayedConcerts, setDisplayedConcerts] = useState<Concert[]>([]);
   const [popularArtists, setPopularArtists] = useState<Artist[]>([]);
   const [trendingVenues, setTrendingVenues] = useState<Venue[]>([]);
   const [selectedGenre, setSelectedGenre] = useState<string | null>(null);
+
+  // Calculate distances for concerts
+  const concertDistances = useMemo(() => {
+    if (!location) return {};
+    const distances: Record<string, string | null> = {};
+    displayedConcerts.forEach(concert => {
+      const distance = getDistanceFromUser(concert.venue.latitude, concert.venue.longitude);
+      distances[concert.id] = distance !== null ? formatDistance(distance) : null;
+    });
+    return distances;
+  }, [displayedConcerts, location, getDistanceFromUser, formatDistance]);
 
   // Count active filters
   const activeFiltersCount = [
@@ -82,6 +94,7 @@ export const HomeScreen: React.FC = () => {
   // Charge les donnees au demarrage
   useEffect(() => {
     loadData();
+    requestPermission(); // Request location for distance display
   }, []);
 
   const loadData = async () => {
@@ -218,9 +231,16 @@ export const HomeScreen: React.FC = () => {
             <Text style={styles.featuredArtist}>{featuredConcert.artist.name}</Text>
             <Text style={styles.featuredVenue}>{featuredConcert.venue.name}</Text>
             <View style={styles.featuredFooter}>
-              <Text style={styles.featuredTime}>
-                {activeTab === 'tonight' ? 'Ce soir' : formatDate(featuredConcert.date)} - {featuredConcert.startTime}
-              </Text>
+              <View style={styles.featuredTimeRow}>
+                <Text style={styles.featuredTime}>
+                  {activeTab === 'tonight' ? 'Ce soir' : formatDate(featuredConcert.date)} - {featuredConcert.startTime}
+                </Text>
+                {concertDistances[featuredConcert.id] && (
+                  <Text style={styles.featuredDistance}>
+                    📍 {concertDistances[featuredConcert.id]}
+                  </Text>
+                )}
+              </View>
               {featuredConcert.price && (
                 <Text style={styles.featuredPrice}>
                   Des {featuredConcert.price.min}{featuredConcert.price.currency}
@@ -422,6 +442,7 @@ export const HomeScreen: React.FC = () => {
             onPress={() => handleConcertPress(item)}
             onFavoritePress={() => handleFavoritePress(item)}
             isFavorite={isFavorite('concert', item.id)}
+            distance={concertDistances[item.id]}
           />
         )}
         ListHeaderComponent={renderHeader}
@@ -626,10 +647,19 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  featuredTimeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
   featuredTime: {
     ...typography.bodySmall,
     color: colors.primary,
     fontWeight: '600',
+  },
+  featuredDistance: {
+    ...typography.caption,
+    color: colors.textMuted,
   },
   featuredPrice: {
     ...typography.bodySmall,
