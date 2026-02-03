@@ -19,6 +19,7 @@ interface ConcertCardProps {
   onFavoritePress?: () => void;
   isFavorite?: boolean;
   variant?: 'default' | 'compact' | 'large';
+  distance?: string | null; // Distance formatee (ex: "1.2 km")
 }
 
 // Formate la date en francais
@@ -55,6 +56,7 @@ export const ConcertCard: React.FC<ConcertCardProps> = ({
   onFavoritePress,
   isFavorite = false,
   variant = 'default',
+  distance,
 }) => {
   const today = isToday(concert.date);
 
@@ -100,11 +102,18 @@ export const ConcertCard: React.FC<ConcertCardProps> = ({
               <Text style={styles.largeDot}>·</Text>
               <Text style={styles.largeTime}>{concert.startTime}</Text>
             </View>
-            {concert.price && (
-              <Text style={styles.largePrice}>
-                des {concert.price.min} {concert.price.currency}
-              </Text>
-            )}
+            <View style={styles.largePriceRow}>
+              {concert.price && (
+                <Text style={styles.largePrice}>
+                  des {concert.price.min} {concert.price.currency}
+                </Text>
+              )}
+              {distance && (
+                <View style={styles.largeDistanceBadge}>
+                  <Text style={styles.largeDistanceText}>📍 {distance}</Text>
+                </View>
+              )}
+            </View>
           </View>
 
           {/* Favori */}
@@ -162,10 +171,17 @@ export const ConcertCard: React.FC<ConcertCardProps> = ({
           )}
         </View>
 
-        {/* Salle */}
-        <Text style={styles.venue} numberOfLines={1}>
-          {concert.venue.name}
-        </Text>
+        {/* Salle & Distance */}
+        <View style={styles.venueRow}>
+          <Text style={styles.venue} numberOfLines={1}>
+            {concert.venue.name}
+          </Text>
+          {distance && (
+            <View style={styles.distanceBadge}>
+              <Text style={styles.distanceText}>{distance}</Text>
+            </View>
+          )}
+        </View>
 
         {/* Date & Heure & Prix */}
         <View style={styles.bottomRow}>
@@ -268,10 +284,27 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontWeight: '600',
   },
+  venueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+    gap: spacing.sm,
+  },
   venue: {
     ...typography.bodySmall,
     color: colors.textSecondary,
-    marginBottom: spacing.sm,
+    flex: 1,
+  },
+  distanceBadge: {
+    backgroundColor: colors.surfaceLight,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: 2,
+    borderRadius: borderRadius.sm,
+  },
+  distanceText: {
+    ...typography.caption,
+    color: colors.textMuted,
+    fontSize: 10,
   },
   bottomRow: {
     flexDirection: 'row',
@@ -393,10 +426,26 @@ const styles = StyleSheet.create({
     ...typography.bodySmall,
     color: colors.textSecondary,
   },
+  largePriceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
   largePrice: {
     ...typography.caption,
     color: colors.primary,
     fontWeight: '600',
+  },
+  largeDistanceBadge: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: borderRadius.sm,
+  },
+  largeDistanceText: {
+    ...typography.caption,
+    color: colors.textPrimary,
+    fontSize: 11,
   },
   largeFavoriteButton: {
     position: 'absolute',
