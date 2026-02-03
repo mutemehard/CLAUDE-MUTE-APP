@@ -32,9 +32,15 @@ interface SearchResultsState {
 
 export const SearchScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
-  const { isFavorite, addFavorite, removeFavorite } = useStore();
+  const {
+    isFavorite,
+    addFavorite,
+    removeFavorite,
+    recentSearches,
+    addRecentSearch,
+    clearRecentSearches,
+  } = useStore();
   const [query, setQuery] = useState('');
-  const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<SearchTab>('all');
@@ -64,16 +70,14 @@ export const SearchScreen: React.FC = () => {
 
       setResults({ concerts, artists, venues });
 
-      // Ajoute aux recherches recentes
-      if (!recentSearches.includes(searchQuery)) {
-        setRecentSearches(prev => [searchQuery, ...prev].slice(0, 5));
-      }
+      // Ajoute aux recherches recentes (persistees dans le store)
+      addRecentSearch(searchQuery);
     } catch (error) {
       console.error('Search error:', error);
     } finally {
       setIsLoading(false);
     }
-  }, [recentSearches]);
+  }, [addRecentSearch]);
 
   const handleSubmit = () => {
     Keyboard.dismiss();
@@ -313,7 +317,7 @@ export const SearchScreen: React.FC = () => {
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>Recherches recentes</Text>
-                <TouchableOpacity onPress={() => setRecentSearches([])}>
+                <TouchableOpacity onPress={clearRecentSearches}>
                   <Text style={styles.clearAllText}>Effacer</Text>
                 </TouchableOpacity>
               </View>
