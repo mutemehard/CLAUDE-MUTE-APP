@@ -3,7 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import {
@@ -17,9 +17,11 @@ import {
   VenueDetailScreen,
   FilterScreen,
   SettingsScreen,
+  OnboardingScreen,
 } from './src/screens';
 import { colors } from './src/constants';
 import { RootStackParamList, TabParamList } from './src/types';
+import { useStore, useHydration } from './src/hooks/useStore';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<TabParamList>();
@@ -103,64 +105,109 @@ const TabNavigator: React.FC = () => {
   );
 };
 
-// Navigation principale
+// Ecran de chargement pendant l'hydration
+const LoadingScreen: React.FC = () => (
+  <View style={styles.loadingContainer}>
+    <Text style={styles.loadingLogo}>MUTE</Text>
+    <ActivityIndicator size="large" color={colors.primary} style={styles.loadingIndicator} />
+  </View>
+);
+
+// Navigation principale avec gestion de l'onboarding
+const AppNavigator: React.FC = () => {
+  const hasHydrated = useHydration();
+  const onboardingCompleted = useStore(state => state.onboardingCompleted);
+
+  if (!hasHydrated) {
+    return <LoadingScreen />;
+  }
+
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+        animation: 'slide_from_right',
+        contentStyle: { backgroundColor: colors.background },
+      }}
+      initialRouteName={onboardingCompleted ? 'Main' : 'Onboarding'}
+    >
+      <Stack.Screen
+        name="Onboarding"
+        component={OnboardingScreen}
+        options={{
+          animation: 'fade',
+        }}
+      />
+      <Stack.Screen name="Main" component={TabNavigator} />
+      <Stack.Screen
+        name="ConcertDetail"
+        component={ConcertDetailScreen}
+        options={{
+          animation: 'slide_from_bottom',
+          presentation: 'modal',
+        }}
+      />
+      <Stack.Screen
+        name="ArtistDetail"
+        component={ArtistDetailScreen}
+        options={{
+          animation: 'slide_from_right',
+        }}
+      />
+      <Stack.Screen
+        name="VenueDetail"
+        component={VenueDetailScreen}
+        options={{
+          animation: 'slide_from_right',
+        }}
+      />
+      <Stack.Screen
+        name="Filters"
+        component={FilterScreen}
+        options={{
+          animation: 'slide_from_bottom',
+          presentation: 'modal',
+        }}
+      />
+      <Stack.Screen
+        name="Settings"
+        component={SettingsScreen}
+        options={{
+          animation: 'slide_from_right',
+        }}
+      />
+    </Stack.Navigator>
+  );
+};
+
+// App principale
 export default function App() {
   return (
     <SafeAreaProvider>
       <NavigationContainer theme={DarkTheme}>
         <StatusBar style="light" />
-        <Stack.Navigator
-          screenOptions={{
-            headerShown: false,
-            animation: 'slide_from_right',
-            contentStyle: { backgroundColor: colors.background },
-          }}
-        >
-          <Stack.Screen name="Main" component={TabNavigator} />
-          <Stack.Screen
-            name="ConcertDetail"
-            component={ConcertDetailScreen}
-            options={{
-              animation: 'slide_from_bottom',
-              presentation: 'modal',
-            }}
-          />
-          <Stack.Screen
-            name="ArtistDetail"
-            component={ArtistDetailScreen}
-            options={{
-              animation: 'slide_from_right',
-            }}
-          />
-          <Stack.Screen
-            name="VenueDetail"
-            component={VenueDetailScreen}
-            options={{
-              animation: 'slide_from_right',
-            }}
-          />
-          <Stack.Screen
-            name="Filters"
-            component={FilterScreen}
-            options={{
-              animation: 'slide_from_bottom',
-              presentation: 'modal',
-            }}
-          />
-          <Stack.Screen
-            name="Settings"
-            component={SettingsScreen}
-            options={{
-              animation: 'slide_from_right',
-            }}
-          />
-        </Stack.Navigator>
+        <AppNavigator />
       </NavigationContainer>
     </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: colors.background,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingLogo: {
+    fontSize: 48,
+    fontWeight: '800',
+    color: colors.primary,
+    letterSpacing: 4,
+  },
+  loadingIndicator: {
+    marginTop: 24,
+  },
   tabBar: {
     backgroundColor: colors.surface,
     borderTopColor: colors.border,

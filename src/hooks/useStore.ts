@@ -19,6 +19,7 @@ interface AppState {
   filters: ConcertFilters;
   searchQuery: string;
   recentSearches: string[];
+  onboardingCompleted: boolean;
 
   // Actions - Concerts
   fetchConcerts: () => Promise<void>;
@@ -48,6 +49,9 @@ interface AppState {
   addRecentSearch: (query: string) => void;
   clearRecentSearches: () => void;
 
+  // Actions - Onboarding
+  setOnboardingCompleted: (completed: boolean) => void;
+
   // Actions - Hydration
   _hasHydrated: boolean;
   setHasHydrated: (state: boolean) => void;
@@ -73,6 +77,7 @@ export const useStore = create<AppState>()(
       filters: defaultFilters,
       searchQuery: '',
       recentSearches: [],
+      onboardingCompleted: false,
       _hasHydrated: false,
 
       // Hydration handler
@@ -215,6 +220,11 @@ export const useStore = create<AppState>()(
       clearRecentSearches: () => {
         set({ recentSearches: [] });
       },
+
+      // Set onboarding completed
+      setOnboardingCompleted: (completed) => {
+        set({ onboardingCompleted: completed });
+      },
     }),
     {
       name: 'mute-storage',
@@ -225,6 +235,7 @@ export const useStore = create<AppState>()(
         attendedConcerts: state.attendedConcerts,
         filters: state.filters,
         recentSearches: state.recentSearches,
+        onboardingCompleted: state.onboardingCompleted,
       }),
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true);

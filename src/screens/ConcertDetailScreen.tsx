@@ -10,11 +10,12 @@ import {
   Linking,
   Share,
   Alert,
+  FlatList,
 } from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useStore } from '../hooks';
-import { concertService } from '../services';
+import { concertService, notificationService } from '../services';
 import { colors, spacing, typography, borderRadius } from '../constants';
 import { RootStackParamList, Concert } from '../types';
 
@@ -25,11 +26,13 @@ export const ConcertDetailScreen: React.FC = () => {
   const route = useRoute<RouteProps>();
   const navigation = useNavigation<NavigationProp>();
   const { concertId } = route.params;
-  const { isFavorite, addFavorite, removeFavorite } = useStore();
+  const { isFavorite, addFavorite, removeFavorite, addAttendedConcert } = useStore();
 
   const [concert, setConcert] = useState<Concert | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [otherDates, setOtherDates] = useState<Concert[]>([]);
+  const [similarConcerts, setSimilarConcerts] = useState<Concert[]>([]);
+  const [reminderSet, setReminderSet] = useState(false);
 
   useEffect(() => {
     loadConcert();
@@ -40,10 +43,18 @@ export const ConcertDetailScreen: React.FC = () => {
     const data = await concertService.getConcertById(concertId);
     setConcert(data);
 
-    // Charge les autres dates de l'artiste
     if (data) {
+      // Charge les autres dates de l'artiste
       const artistConcerts = await concertService.getConcertsByArtist(data.artist.id);
       setOtherDates(artistConcerts.filter(c => c.id !== concertId));
+
+      // Charge des concerts similaires (meme genre ou meme salle)
+      const allConcerts = await concertService.getAllConcerts();
+      const similar = allConcerts.filter(c =>
+        c.id !== concertId &&
+        (c.genre === data.genre || c.venue.id === data.venue.id)
+      ).slice(0, 5);
+      setSimilarConcerts(similar);
     }
 
     setIsLoading(false);
@@ -59,9 +70,32 @@ export const ConcertDetailScreen: React.FC = () => {
     });
   };
 
+  const formatShortDate = (dateStr: string): string => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('fr-FR', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+    });
+  };
+
   const isToday = (dateStr: string): boolean => {
     const today = new Date().toISOString().split('T')[0];
     return dateStr === today;
+  };
+
+  const isTomorrow = (dateStr: string): boolean => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return dateStr === tomorrow.toISOString().split('T')[0];
+  };
+
+  const getDaysUntil = (dateStr: string): number => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const concertDate = new Date(dateStr);
+    const diff = concertDate.getTime() - today.getTime();
+    return Math.ceil(diff / (1000 * 60 * 60 * 24));
   };
 
   const handleFavorite = () => {
@@ -86,7 +120,7 @@ export const ConcertDetailScreen: React.FC = () => {
     if (!concert) return;
     try {
       await Share.share({
-        message: `${concert.artist.name} en concert @ ${concert.venue.name} le ${formatDate(concert.date)} - ${concert.startTime}`,
+        message: `${concert.artist.name} en concert @ ${concert.venue.name} le ${formatDate(concert.date)} - ${concert.startTime}\n\nDecouvre ce concert sur MUTE !`,
         title: `Concert: ${concert.artist.name}`,
       });
     } catch (error) {
@@ -94,11 +128,48 @@ export const ConcertDetailScreen: React.FC = () => {
     }
   };
 
-  const handleAddToCalendar = () => {
+  const handleSetReminder = async () => {
+    if (!concert) return;
+
+    try {
+      await notificationService.scheduleReminderNotification(concert, 1);
+      setReminderSet(true);
+      Alert.alert(
+        'Rappel active',
+        `Tu recevras une notification la veille du concert (${formatShortDate(concert.date)})`,
+        [{ text: 'OK' }]
+      );
+    } catch (error) {
+      Alert.alert(
+        'Erreur',
+        'Impossible d\'activer le rappel. Verifie tes parametres de notifications.',
+        [{ text: 'OK' }]
+      );
+    }
+  };
+
+  const handleMarkAttended = () => {
+    if (!concert) return;
+
     Alert.alert(
-      'Ajouter au calendrier',
-      'Cette fonctionnalite sera bientot disponible !',
-      [{ text: 'OK' }]
+      'Marquer comme vu',
+      'Ajouter ce concert a ton historique ?',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Ajouter',
+          onPress: () => {
+            addAttendedConcert({
+              concertId: concert.id,
+              artistName: concert.artist.name,
+              venueName: concert.venue.name,
+              date: concert.date,
+              addedAt: new Date().toISOString(),
+            });
+            Alert.alert('Concert ajoute !', 'Ce concert a ete ajoute a ton historique.');
+          },
+        },
+      ]
     );
   };
 
@@ -106,6 +177,20 @@ export const ConcertDetailScreen: React.FC = () => {
     if (!concert) return;
     const url = `https://maps.google.com/?q=${concert.venue.latitude},${concert.venue.longitude}`;
     Linking.openURL(url);
+  };
+
+  const handleArtistPress = () => {
+    if (!concert) return;
+    navigation.navigate('ArtistDetail', { artistId: concert.artist.id });
+  };
+
+  const handleVenuePress = () => {
+    if (!concert) return;
+    navigation.navigate('VenueDetail', { venueId: concert.venue.id });
+  };
+
+  const handleSimilarConcertPress = (similarConcert: Concert) => {
+    navigation.push('ConcertDetail', { concertId: similarConcert.id });
   };
 
   if (isLoading || !concert) {
@@ -120,6 +205,9 @@ export const ConcertDetailScreen: React.FC = () => {
 
   const favorite = isFavorite('concert', concert.id);
   const today = isToday(concert.date);
+  const tomorrow = isTomorrow(concert.date);
+  const daysUntil = getDaysUntil(concert.date);
+  const isPast = daysUntil < 0;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -143,6 +231,16 @@ export const ConcertDetailScreen: React.FC = () => {
             <Text style={styles.backIcon}>←</Text>
           </TouchableOpacity>
 
+          {/* Share & Favorite buttons */}
+          <View style={styles.headerActions}>
+            <TouchableOpacity style={styles.headerActionButton} onPress={handleShare}>
+              <Text style={styles.headerActionIcon}>📤</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.headerActionButton} onPress={handleFavorite}>
+              <Text style={styles.headerActionIcon}>{favorite ? '❤️' : '🤍'}</Text>
+            </TouchableOpacity>
+          </View>
+
           {/* Badges */}
           <View style={styles.badgesContainer}>
             {today && (
@@ -150,18 +248,40 @@ export const ConcertDetailScreen: React.FC = () => {
                 <Text style={styles.badgeText}>CE SOIR</Text>
               </View>
             )}
+            {tomorrow && !today && (
+              <View style={[styles.todayBadge, { backgroundColor: colors.secondary }]}>
+                <Text style={styles.badgeText}>DEMAIN</Text>
+              </View>
+            )}
             {concert.isSoldOut && (
               <View style={styles.soldOutBadge}>
                 <Text style={styles.badgeText}>COMPLET</Text>
               </View>
             )}
+            {isPast && (
+              <View style={[styles.soldOutBadge, { backgroundColor: colors.textMuted }]}>
+                <Text style={styles.badgeText}>PASSE</Text>
+              </View>
+            )}
           </View>
+
+          {/* Countdown */}
+          {!isPast && !today && daysUntil <= 7 && (
+            <View style={styles.countdownBadge}>
+              <Text style={styles.countdownText}>
+                J-{daysUntil}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Content */}
         <View style={styles.content}>
-          {/* Artist name */}
-          <Text style={styles.artistName}>{concert.artist.name}</Text>
+          {/* Artist name - clickable */}
+          <TouchableOpacity onPress={handleArtistPress}>
+            <Text style={styles.artistName}>{concert.artist.name}</Text>
+            <Text style={styles.artistLink}>Voir le profil de l'artiste →</Text>
+          </TouchableOpacity>
 
           {/* Genre */}
           {concert.genre && (
@@ -170,104 +290,145 @@ export const ConcertDetailScreen: React.FC = () => {
             </View>
           )}
 
-          {/* Date & Time */}
-          <View style={styles.infoSection}>
-            <Text style={styles.sectionIcon}>📅</Text>
-            <View style={styles.sectionContent}>
-              <Text style={styles.infoTitle}>{formatDate(concert.date)}</Text>
-              <Text style={styles.infoSubtitle}>
-                {concert.startTime}
-                {concert.endTime && ` - ${concert.endTime}`}
+          {/* Quick Stats */}
+          <View style={styles.quickStats}>
+            <View style={styles.quickStatItem}>
+              <Text style={styles.quickStatValue}>
+                {today ? 'Aujourd\'hui' : tomorrow ? 'Demain' : formatShortDate(concert.date)}
               </Text>
+              <Text style={styles.quickStatLabel}>Date</Text>
+            </View>
+            <View style={styles.quickStatDivider} />
+            <View style={styles.quickStatItem}>
+              <Text style={styles.quickStatValue}>{concert.startTime}</Text>
+              <Text style={styles.quickStatLabel}>Heure</Text>
+            </View>
+            <View style={styles.quickStatDivider} />
+            <View style={styles.quickStatItem}>
+              <Text style={styles.quickStatValue}>
+                {concert.price ? `${concert.price.min}${concert.price.currency}` : 'Gratuit'}
+              </Text>
+              <Text style={styles.quickStatLabel}>A partir de</Text>
             </View>
           </View>
 
-          {/* Venue */}
-          <TouchableOpacity style={styles.infoSection} onPress={handleOpenMaps}>
-            <Text style={styles.sectionIcon}>📍</Text>
-            <View style={styles.sectionContent}>
-              <Text style={styles.infoTitle}>{concert.venue.name}</Text>
-              <Text style={styles.infoSubtitle}>{concert.venue.address}</Text>
-              <Text style={styles.infoSubtitle}>
+          {/* Venue - clickable */}
+          <TouchableOpacity style={styles.venueCard} onPress={handleVenuePress}>
+            <View style={styles.venueIconContainer}>
+              <Text style={styles.venueIcon}>📍</Text>
+            </View>
+            <View style={styles.venueInfo}>
+              <Text style={styles.venueName}>{concert.venue.name}</Text>
+              <Text style={styles.venueAddress}>{concert.venue.address}</Text>
+              <Text style={styles.venueCity}>
                 {concert.venue.postalCode} {concert.venue.city}
                 {concert.venue.arrondissement && ` (${concert.venue.arrondissement})`}
               </Text>
             </View>
-            <Text style={styles.linkIcon}>→</Text>
+            <TouchableOpacity style={styles.mapsButton} onPress={handleOpenMaps}>
+              <Text style={styles.mapsButtonText}>Maps</Text>
+            </TouchableOpacity>
           </TouchableOpacity>
-
-          {/* Price */}
-          {concert.price && (
-            <View style={styles.infoSection}>
-              <Text style={styles.sectionIcon}>💰</Text>
-              <View style={styles.sectionContent}>
-                <Text style={styles.infoTitle}>
-                  {concert.price.min === concert.price.max
-                    ? `${concert.price.min} ${concert.price.currency}`
-                    : `${concert.price.min} - ${concert.price.max} ${concert.price.currency}`}
-                </Text>
-                <Text style={styles.infoSubtitle}>Prix des places</Text>
-              </View>
-            </View>
-          )}
-
-          {/* Source */}
-          <View style={styles.infoSection}>
-            <Text style={styles.sectionIcon}>🔗</Text>
-            <View style={styles.sectionContent}>
-              <Text style={styles.infoTitle}>Source: {concert.source}</Text>
-              <Text style={styles.infoSubtitle}>Donnees de billetterie</Text>
-            </View>
-          </View>
 
           {/* Artist description */}
           {concert.artist.description && (
             <View style={styles.descriptionSection}>
-              <Text style={styles.descriptionTitle}>A propos de l'artiste</Text>
+              <Text style={styles.sectionTitle}>A propos de l'artiste</Text>
               <Text style={styles.description}>{concert.artist.description}</Text>
+              <TouchableOpacity onPress={handleArtistPress}>
+                <Text style={styles.seeMoreLink}>En savoir plus →</Text>
+              </TouchableOpacity>
             </View>
           )}
 
-          {/* Other dates */}
+          {/* Actions */}
+          <View style={styles.actionsSection}>
+            <TouchableOpacity
+              style={[styles.actionButton, reminderSet && styles.actionButtonActive]}
+              onPress={handleSetReminder}
+              disabled={isPast || today}
+            >
+              <Text style={styles.actionIcon}>{reminderSet ? '🔔' : '🔕'}</Text>
+              <Text style={styles.actionText}>
+                {reminderSet ? 'Rappel active' : 'Me rappeler'}
+              </Text>
+            </TouchableOpacity>
+
+            {isPast && (
+              <TouchableOpacity style={styles.actionButton} onPress={handleMarkAttended}>
+                <Text style={styles.actionIcon}>✓</Text>
+                <Text style={styles.actionText}>J'y etais !</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Other dates by same artist */}
           {otherDates.length > 0 && (
-            <View style={styles.otherDatesSection}>
-              <Text style={styles.otherDatesTitle}>Autres dates</Text>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Autres dates de {concert.artist.name}</Text>
               {otherDates.map(other => (
                 <TouchableOpacity
                   key={other.id}
                   style={styles.otherDateItem}
                   onPress={() => navigation.push('ConcertDetail', { concertId: other.id })}
                 >
-                  <Text style={styles.otherDateDate}>
-                    {formatDate(other.date).split(' ').slice(0, 3).join(' ')}
-                  </Text>
-                  <Text style={styles.otherDateVenue}>{other.venue.name}</Text>
+                  <View style={styles.otherDateInfo}>
+                    <Text style={styles.otherDateDate}>{formatShortDate(other.date)}</Text>
+                    <Text style={styles.otherDateVenue}>{other.venue.name}</Text>
+                  </View>
+                  {other.price && (
+                    <Text style={styles.otherDatePrice}>
+                      {other.price.min}{other.price.currency}
+                    </Text>
+                  )}
                   <Text style={styles.otherDateArrow}>→</Text>
                 </TouchableOpacity>
               ))}
             </View>
           )}
 
-          {/* Actions secondaires */}
-          <View style={styles.secondaryActions}>
-            <TouchableOpacity style={styles.secondaryButton} onPress={handleShare}>
-              <Text style={styles.secondaryButtonIcon}>📤</Text>
-              <Text style={styles.secondaryButtonText}>Partager</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.secondaryButton} onPress={handleAddToCalendar}>
-              <Text style={styles.secondaryButtonIcon}>📆</Text>
-              <Text style={styles.secondaryButtonText}>Calendrier</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.secondaryButton} onPress={handleFavorite}>
-              <Text style={styles.secondaryButtonIcon}>{favorite ? '❤️' : '🤍'}</Text>
-              <Text style={styles.secondaryButtonText}>Favori</Text>
-            </TouchableOpacity>
+          {/* Similar concerts */}
+          {similarConcerts.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Tu pourrais aimer</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                {similarConcerts.map(similar => (
+                  <TouchableOpacity
+                    key={similar.id}
+                    style={styles.similarCard}
+                    onPress={() => handleSimilarConcertPress(similar)}
+                  >
+                    <View style={styles.similarImageContainer}>
+                      <View style={styles.similarImagePlaceholder}>
+                        <Text style={styles.similarInitial}>
+                          {similar.artist.name.charAt(0)}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={styles.similarArtist} numberOfLines={1}>
+                      {similar.artist.name}
+                    </Text>
+                    <Text style={styles.similarDate}>{formatShortDate(similar.date)}</Text>
+                    <Text style={styles.similarVenue} numberOfLines={1}>
+                      {similar.venue.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+
+          {/* Source */}
+          <View style={styles.sourceInfo}>
+            <Text style={styles.sourceText}>
+              Source: {concert.source} • Mis a jour aujourd'hui
+            </Text>
           </View>
         </View>
       </ScrollView>
 
       {/* Bottom CTA */}
-      {!concert.isSoldOut && concert.ticketUrl && (
+      {!concert.isSoldOut && concert.ticketUrl && !isPast && (
         <View style={styles.bottomCTA}>
           <TouchableOpacity style={styles.buyButton} onPress={handleBuyTickets}>
             <Text style={styles.buyButtonText}>Acheter des places</Text>
@@ -277,6 +438,17 @@ export const ConcertDetailScreen: React.FC = () => {
               </Text>
             )}
           </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Sold out or Past CTA */}
+      {(concert.isSoldOut || isPast) && (
+        <View style={styles.bottomCTA}>
+          <View style={[styles.buyButton, styles.disabledButton]}>
+            <Text style={styles.disabledButtonText}>
+              {concert.isSoldOut ? 'Complet' : 'Concert passe'}
+            </Text>
+          </View>
         </View>
       )}
     </SafeAreaView>
@@ -301,7 +473,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   imageContainer: {
-    height: 280,
+    height: 300,
     position: 'relative',
   },
   image: {
@@ -314,13 +486,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   placeholderText: {
-    fontSize: 80,
+    fontSize: 100,
     fontWeight: 'bold',
-    color: colors.textMuted,
+    color: colors.primary,
   },
   imageOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    backgroundColor: 'rgba(0,0,0,0.4)',
   },
   backButton: {
     position: 'absolute',
@@ -337,6 +509,24 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontSize: 24,
   },
+  headerActions: {
+    position: 'absolute',
+    top: spacing.md,
+    right: spacing.md,
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  headerActionButton: {
+    width: 40,
+    height: 40,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerActionIcon: {
+    fontSize: 18,
+  },
   badgesContainer: {
     position: 'absolute',
     bottom: spacing.md,
@@ -351,7 +541,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.sm,
   },
   soldOutBadge: {
-    backgroundColor: colors.textMuted,
+    backgroundColor: colors.error,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
     borderRadius: borderRadius.sm,
@@ -361,13 +551,32 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontWeight: 'bold',
   },
+  countdownBadge: {
+    position: 'absolute',
+    bottom: spacing.md,
+    right: spacing.md,
+    backgroundColor: colors.accent,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.sm,
+  },
+  countdownText: {
+    ...typography.caption,
+    color: colors.background,
+    fontWeight: 'bold',
+  },
   content: {
     padding: spacing.md,
   },
   artistName: {
     ...typography.h1,
     color: colors.textPrimary,
-    marginBottom: spacing.sm,
+    marginBottom: 4,
+  },
+  artistLink: {
+    ...typography.bodySmall,
+    color: colors.primary,
+    marginBottom: spacing.md,
   },
   genreContainer: {
     alignSelf: 'flex-start',
@@ -381,42 +590,87 @@ const styles = StyleSheet.create({
     ...typography.bodySmall,
     color: colors.secondary,
   },
-  infoSection: {
+  quickStats: {
+    flexDirection: 'row',
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+  },
+  quickStatItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  quickStatValue: {
+    ...typography.body,
+    color: colors.textPrimary,
+    fontWeight: 'bold',
+  },
+  quickStatLabel: {
+    ...typography.caption,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  quickStatDivider: {
+    width: 1,
+    backgroundColor: colors.surfaceLight,
+    marginHorizontal: spacing.sm,
+  },
+  venueCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.surface,
     borderRadius: borderRadius.lg,
     padding: spacing.md,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
   },
-  sectionIcon: {
-    fontSize: 24,
+  venueIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.surfaceLight,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginRight: spacing.md,
   },
-  sectionContent: {
+  venueIcon: {
+    fontSize: 24,
+  },
+  venueInfo: {
     flex: 1,
   },
-  infoTitle: {
+  venueName: {
     ...typography.body,
     color: colors.textPrimary,
     fontWeight: '600',
   },
-  infoSubtitle: {
+  venueAddress: {
     ...typography.bodySmall,
     color: colors.textSecondary,
     marginTop: 2,
   },
-  linkIcon: {
-    fontSize: 20,
+  venueCity: {
+    ...typography.caption,
     color: colors.textMuted,
   },
+  mapsButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.md,
+  },
+  mapsButtonText: {
+    ...typography.caption,
+    color: colors.textPrimary,
+    fontWeight: '600',
+  },
   descriptionSection: {
-    marginTop: spacing.md,
-    padding: spacing.md,
     backgroundColor: colors.surface,
     borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.md,
   },
-  descriptionTitle: {
+  sectionTitle: {
     ...typography.h3,
     color: colors.textPrimary,
     marginBottom: spacing.sm,
@@ -426,13 +680,39 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     lineHeight: 24,
   },
-  otherDatesSection: {
-    marginTop: spacing.lg,
+  seeMoreLink: {
+    ...typography.bodySmall,
+    color: colors.primary,
+    marginTop: spacing.sm,
   },
-  otherDatesTitle: {
-    ...typography.h3,
+  actionsSection: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  actionButtonActive: {
+    backgroundColor: colors.primary,
+  },
+  actionIcon: {
+    fontSize: 18,
+  },
+  actionText: {
+    ...typography.bodySmall,
     color: colors.textPrimary,
-    marginBottom: spacing.md,
+    fontWeight: '600',
+  },
+  section: {
+    marginBottom: spacing.lg,
   },
   otherDateItem: {
     flexDirection: 'row',
@@ -442,38 +722,73 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     marginBottom: spacing.sm,
   },
+  otherDateInfo: {
+    flex: 1,
+  },
   otherDateDate: {
     ...typography.body,
     color: colors.textPrimary,
     fontWeight: '600',
-    width: 100,
   },
   otherDateVenue: {
     ...typography.bodySmall,
-    color: colors.textSecondary,
-    flex: 1,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  otherDatePrice: {
+    ...typography.bodySmall,
+    color: colors.accent,
+    fontWeight: '600',
+    marginRight: spacing.sm,
   },
   otherDateArrow: {
     color: colors.textMuted,
     fontSize: 18,
   },
-  secondaryActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginTop: spacing.lg,
-    marginBottom: spacing.xl,
+  similarCard: {
+    width: 140,
+    marginRight: spacing.sm,
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    padding: spacing.sm,
   },
-  secondaryButton: {
-    alignItems: 'center',
-    padding: spacing.md,
-  },
-  secondaryButtonIcon: {
-    fontSize: 24,
+  similarImageContainer: {
     marginBottom: spacing.xs,
   },
-  secondaryButtonText: {
+  similarImagePlaceholder: {
+    width: '100%',
+    aspectRatio: 1,
+    backgroundColor: colors.surfaceLight,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  similarInitial: {
+    ...typography.h2,
+    color: colors.primary,
+  },
+  similarArtist: {
+    ...typography.bodySmall,
+    color: colors.textPrimary,
+    fontWeight: '600',
+  },
+  similarDate: {
     ...typography.caption,
-    color: colors.textSecondary,
+    color: colors.primary,
+    marginTop: 2,
+  },
+  similarVenue: {
+    ...typography.caption,
+    color: colors.textMuted,
+  },
+  sourceInfo: {
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  sourceText: {
+    ...typography.caption,
+    color: colors.textMuted,
   },
   bottomCTA: {
     padding: spacing.md,
@@ -497,5 +812,13 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     opacity: 0.8,
     marginTop: 2,
+  },
+  disabledButton: {
+    backgroundColor: colors.surfaceLight,
+  },
+  disabledButtonText: {
+    ...typography.body,
+    color: colors.textMuted,
+    fontWeight: '600',
   },
 });

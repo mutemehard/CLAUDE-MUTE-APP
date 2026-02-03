@@ -104,6 +104,7 @@ export type TabParamList = {
 };
 
 export type RootStackParamList = {
+  Onboarding: undefined;
   Main: undefined;
   ConcertDetail: { concertId: string };
   ArtistDetail: { artistId: string };
