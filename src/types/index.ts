@@ -46,7 +46,7 @@ export interface Concert {
   description?: string;
 }
 
-export type DataSource = 'bandsintown' | 'songkick' | 'ticketmaster' | 'eventbrite' | 'manual';
+export type DataSource = 'bandsintown' | 'songkick' | 'ticketmaster' | 'eventbrite' | 'openagenda' | 'manual';
 
 export interface ConcertFilters {
   dateRange?: {

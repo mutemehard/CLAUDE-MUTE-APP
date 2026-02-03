@@ -152,7 +152,7 @@ const transformEvent = (event: OpenAgendaEvent): Concert | null => {
     endTime: endDate?.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
     price: price ? { ...price, currency: 'EUR' } : undefined,
     ticketUrl,
-    source: 'manual', // OpenAgenda n'est pas dans nos types source
+    source: 'openagenda',
     sourceId: String(event.uid),
     genre: event.keywords?.fr?.[0],
     isSoldOut: false,
