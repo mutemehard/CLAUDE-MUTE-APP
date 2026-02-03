@@ -93,6 +93,14 @@ export const FavoritesScreen: React.FC = () => {
     removeFavorite('venue', venueId);
   };
 
+  const handleArtistPress = (artist: Artist) => {
+    navigation.navigate('ArtistDetail', { artistId: artist.id });
+  };
+
+  const handleVenuePress = (venue: Venue) => {
+    navigation.navigate('VenueDetail', { venueId: venue.id });
+  };
+
   const renderEmptyState = () => {
     const emptyConfig = {
       concerts: {
@@ -124,7 +132,11 @@ export const FavoritesScreen: React.FC = () => {
   };
 
   const renderArtistItem = ({ item }: { item: Artist }) => (
-    <View style={styles.listItem}>
+    <TouchableOpacity
+      style={styles.listItem}
+      onPress={() => handleArtistPress(item)}
+      activeOpacity={0.7}
+    >
       <View style={styles.listItemAvatar}>
         <Text style={styles.listItemAvatarText}>{item.name.charAt(0)}</Text>
       </View>
@@ -137,14 +149,19 @@ export const FavoritesScreen: React.FC = () => {
       <TouchableOpacity
         style={styles.removeButton}
         onPress={() => handleRemoveArtist(item.id)}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
         <Text style={styles.removeButtonText}>Retirer</Text>
       </TouchableOpacity>
-    </View>
+    </TouchableOpacity>
   );
 
   const renderVenueItem = ({ item }: { item: Venue }) => (
-    <View style={styles.listItem}>
+    <TouchableOpacity
+      style={styles.listItem}
+      onPress={() => handleVenuePress(item)}
+      activeOpacity={0.7}
+    >
       <View style={styles.listItemAvatar}>
         <Text style={styles.listItemAvatarText}>📍</Text>
       </View>
@@ -157,10 +174,11 @@ export const FavoritesScreen: React.FC = () => {
       <TouchableOpacity
         style={styles.removeButton}
         onPress={() => handleRemoveVenue(item.id)}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
         <Text style={styles.removeButtonText}>Retirer</Text>
       </TouchableOpacity>
-    </View>
+    </TouchableOpacity>
   );
 
   return (

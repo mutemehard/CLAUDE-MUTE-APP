@@ -65,14 +65,19 @@ const mockAttendedConcerts: AttendedConcert[] = [
 
 export const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
-  const { attendedConcerts: storeAttendedConcerts, addAttendedConcert } = useStore();
+  const {
+    attendedConcerts: storeAttendedConcerts,
+    addAttendedConcert,
+    removeAttendedConcert,
+    updateAttendedConcert,
+  } = useStore();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [selectedGenres, setSelectedGenres] = useState<string[]>(['Techno', 'Electronic', 'Rock']);
-  const [attendedConcerts, setAttendedConcerts] = useState<AttendedConcert[]>(
-    storeAttendedConcerts.length > 0 ? storeAttendedConcerts : mockAttendedConcerts
-  );
   const [showAddModal, setShowAddModal] = useState(false);
-  const [newConcert, setNewConcert] = useState({ artist: '', venue: '', date: '' });
+  const [newConcert, setNewConcert] = useState({ artist: '', venue: '', date: '', rating: 0 });
+
+  // Utilise le store ou les mocks si vide
+  const attendedConcerts = storeAttendedConcerts.length > 0 ? storeAttendedConcerts : mockAttendedConcerts;
 
   const toggleGenre = (genre: string) => {
     setSelectedGenres(prev =>
@@ -134,11 +139,31 @@ export const ProfileScreen: React.FC = () => {
       venueName: newConcert.venue,
       date: newConcert.date,
       addedAt: new Date().toISOString(),
+      rating: newConcert.rating > 0 ? newConcert.rating : undefined,
     };
 
-    setAttendedConcerts(prev => [concert, ...prev]);
-    setNewConcert({ artist: '', venue: '', date: '' });
+    addAttendedConcert(concert);
+    setNewConcert({ artist: '', venue: '', date: '', rating: 0 });
     setShowAddModal(false);
+  };
+
+  const handleDeleteConcert = (concertId: string, artistName: string) => {
+    Alert.alert(
+      'Supprimer',
+      `Retirer ${artistName} de ton historique ?`,
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Supprimer',
+          style: 'destructive',
+          onPress: () => removeAttendedConcert(concertId),
+        },
+      ]
+    );
+  };
+
+  const handleRateConcert = (concertId: string, rating: number) => {
+    updateAttendedConcert(concertId, { rating });
   };
 
   const formatDate = (dateStr: string): string => {
@@ -243,19 +268,35 @@ export const ProfileScreen: React.FC = () => {
             <View key={year} style={styles.yearGroup}>
               <Text style={styles.yearLabel}>{year}</Text>
               {concerts.map(concert => (
-                <View key={concert.concertId} style={styles.concertItem}>
+                <TouchableOpacity
+                  key={concert.concertId}
+                  style={styles.concertItem}
+                  onLongPress={() => handleDeleteConcert(concert.concertId, concert.artistName)}
+                  activeOpacity={0.7}
+                >
                   <View style={styles.concertInfo}>
                     <Text style={styles.concertArtist}>{concert.artistName}</Text>
                     <Text style={styles.concertDetails}>
                       {concert.venueName} · {formatDate(concert.date)}
                     </Text>
                   </View>
-                  {concert.rating && (
-                    <Text style={styles.concertRating}>
-                      {'★'.repeat(concert.rating)}
-                    </Text>
-                  )}
-                </View>
+                  <View style={styles.concertRatingContainer}>
+                    {[1, 2, 3, 4, 5].map(star => (
+                      <TouchableOpacity
+                        key={star}
+                        onPress={() => handleRateConcert(concert.concertId, star)}
+                        hitSlop={{ top: 5, bottom: 5, left: 2, right: 2 }}
+                      >
+                        <Text style={[
+                          styles.concertRatingStar,
+                          (concert.rating || 0) >= star && styles.concertRatingStarFilled,
+                        ]}>
+                          ★
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </TouchableOpacity>
               ))}
             </View>
           ))}
@@ -360,6 +401,28 @@ export const ProfileScreen: React.FC = () => {
               value={newConcert.date}
               onChangeText={text => setNewConcert(prev => ({ ...prev, date: text }))}
             />
+
+            <View style={styles.ratingSection}>
+              <Text style={styles.ratingLabel}>Note (optionnel)</Text>
+              <View style={styles.ratingStars}>
+                {[1, 2, 3, 4, 5].map(star => (
+                  <TouchableOpacity
+                    key={star}
+                    onPress={() => setNewConcert(prev => ({
+                      ...prev,
+                      rating: prev.rating === star ? 0 : star,
+                    }))}
+                  >
+                    <Text style={[
+                      styles.ratingStar,
+                      newConcert.rating >= star && styles.ratingStarSelected,
+                    ]}>
+                      ★
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
 
             <View style={styles.modalActions}>
               <TouchableOpacity
@@ -545,9 +608,16 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     marginTop: 2,
   },
-  concertRating: {
+  concertRatingContainer: {
+    flexDirection: 'row',
+    gap: 2,
+  },
+  concertRatingStar: {
+    fontSize: 14,
+    color: colors.surfaceLight,
+  },
+  concertRatingStarFilled: {
     color: colors.warning,
-    fontSize: 12,
   },
   emptyHistory: {
     alignItems: 'center',
@@ -660,6 +730,25 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     color: colors.textPrimary,
     ...typography.body,
+  },
+  ratingSection: {
+    marginBottom: spacing.md,
+  },
+  ratingLabel: {
+    ...typography.caption,
+    color: colors.textMuted,
+    marginBottom: spacing.sm,
+  },
+  ratingStars: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  ratingStar: {
+    fontSize: 32,
+    color: colors.surfaceLight,
+  },
+  ratingStarSelected: {
+    color: colors.warning,
   },
   modalActions: {
     flexDirection: 'row',
