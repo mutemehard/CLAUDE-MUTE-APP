@@ -39,6 +39,7 @@ export const SearchScreen: React.FC = () => {
     recentSearches,
     addRecentSearch,
     clearRecentSearches,
+    getFriendsForConcert,
   } = useStore();
   const [query, setQuery] = useState('');
   const [hasSearched, setHasSearched] = useState(false);
@@ -260,6 +261,7 @@ export const SearchScreen: React.FC = () => {
               onPress={() => handleConcertPress(concert)}
               onFavoritePress={() => handleFavoritePress(concert)}
               isFavorite={isFavorite('concert', concert.id)}
+              friendsInfo={getFriendsForConcert(concert.id)}
             />
           ))}
         </View>
@@ -468,6 +470,7 @@ export const SearchScreen: React.FC = () => {
                       onPress={() => handleConcertPress(item)}
                       onFavoritePress={() => handleFavoritePress(item)}
                       isFavorite={isFavorite('concert', item.id)}
+                      friendsInfo={getFriendsForConcert(item.id)}
                     />
                   )}
                   contentContainerStyle={styles.listContent}

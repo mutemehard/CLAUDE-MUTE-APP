@@ -23,7 +23,7 @@ type TabType = 'concerts' | 'artists' | 'venues';
 
 export const FavoritesScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
-  const { favorites, isFavorite, removeFavorite, addFavorite } = useStore();
+  const { favorites, isFavorite, removeFavorite, addFavorite, getFriendsForConcert } = useStore();
   const [activeTab, setActiveTab] = useState<TabType>('concerts');
   const [favoriteConcerts, setFavoriteConcerts] = useState<Concert[]>([]);
   const [favoriteArtists, setFavoriteArtists] = useState<Artist[]>([]);
@@ -271,6 +271,7 @@ export const FavoritesScreen: React.FC = () => {
               onPress={() => handleConcertPress(item)}
               onFavoritePress={() => handleFavoritePress(item)}
               isFavorite={true}
+              friendsInfo={getFriendsForConcert(item.id)}
             />
           )}
           contentContainerStyle={styles.listContent}

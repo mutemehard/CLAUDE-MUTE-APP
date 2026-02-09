@@ -7,11 +7,17 @@ import {
   Image,
   Dimensions,
 } from 'react-native';
-import { Concert } from '../types';
+import { Concert, Friend } from '../types';
 import { colors, spacing, borderRadius, typography } from '../constants';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width - spacing.md * 2;
+
+// Info sur les amis qui participent
+interface FriendsInfo {
+  going: Friend[];
+  interested: Friend[];
+}
 
 interface ConcertCardProps {
   concert: Concert;
@@ -20,6 +26,7 @@ interface ConcertCardProps {
   isFavorite?: boolean;
   variant?: 'default' | 'compact' | 'large';
   distance?: string | null; // Distance formatee (ex: "1.2 km")
+  friendsInfo?: FriendsInfo; // Amis qui participent
 }
 
 // Formate la date en francais
@@ -57,8 +64,13 @@ export const ConcertCard: React.FC<ConcertCardProps> = ({
   isFavorite = false,
   variant = 'default',
   distance,
+  friendsInfo,
 }) => {
   const today = isToday(concert.date);
+
+  // Nombre total d'amis qui participent
+  const totalFriends = (friendsInfo?.going.length || 0) + (friendsInfo?.interested.length || 0);
+  const hasFriends = totalFriends > 0;
 
   if (variant === 'large') {
     return (
@@ -111,6 +123,33 @@ export const ConcertCard: React.FC<ConcertCardProps> = ({
               {distance && (
                 <View style={styles.largeDistanceBadge}>
                   <Text style={styles.largeDistanceText}>📍 {distance}</Text>
+                </View>
+              )}
+              {/* Amis sur large card */}
+              {hasFriends && (
+                <View style={styles.largeFriendsRow}>
+                  <View style={styles.largeFriendsAvatars}>
+                    {[...friendsInfo!.going, ...friendsInfo!.interested].slice(0, 3).map((friend, index) => (
+                      <View
+                        key={friend.id}
+                        style={[
+                          styles.largeFriendAvatar,
+                          { marginLeft: index > 0 ? -6 : 0 },
+                        ]}
+                      >
+                        {friend.avatarUrl ? (
+                          <Image source={{ uri: friend.avatarUrl }} style={styles.largeFriendAvatarImage} />
+                        ) : (
+                          <Text style={styles.largeFriendAvatarText}>
+                            {friend.displayName.charAt(0)}
+                          </Text>
+                        )}
+                      </View>
+                    ))}
+                  </View>
+                  <Text style={styles.largeFriendsText}>
+                    {totalFriends} ami{totalFriends > 1 ? 's' : ''}
+                  </Text>
                 </View>
               )}
             </View>
@@ -195,6 +234,36 @@ export const ConcertCard: React.FC<ConcertCardProps> = ({
             </Text>
           )}
         </View>
+
+        {/* Amis qui participent */}
+        {hasFriends && (
+          <View style={styles.friendsRow}>
+            <View style={styles.friendsAvatars}>
+              {friendsInfo!.going.slice(0, 3).map((friend, index) => (
+                <View
+                  key={friend.id}
+                  style={[
+                    styles.friendAvatar,
+                    { marginLeft: index > 0 ? -8 : 0 },
+                  ]}
+                >
+                  {friend.avatarUrl ? (
+                    <Image source={{ uri: friend.avatarUrl }} style={styles.friendAvatarImage} />
+                  ) : (
+                    <Text style={styles.friendAvatarText}>
+                      {friend.displayName.charAt(0)}
+                    </Text>
+                  )}
+                </View>
+              ))}
+            </View>
+            <Text style={styles.friendsText}>
+              {friendsInfo!.going.length > 0
+                ? `${friendsInfo!.going[0].displayName}${friendsInfo!.going.length > 1 ? ` +${friendsInfo!.going.length - 1}` : ''} y va`
+                : `${friendsInfo!.interested[0].displayName}${friendsInfo!.interested.length > 1 ? ` +${friendsInfo!.interested.length - 1}` : ''} interesse`}
+            </Text>
+          </View>
+        )}
       </View>
 
       {/* Bouton favori */}
@@ -460,5 +529,77 @@ const styles = StyleSheet.create({
   },
   favoriteIcon: {
     fontSize: 20,
+  },
+  // Friends row for default card
+  friendsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing.sm,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    gap: spacing.sm,
+  },
+  friendsAvatars: {
+    flexDirection: 'row',
+  },
+  friendAvatar: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.surface,
+  },
+  friendAvatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 10,
+  },
+  friendAvatarText: {
+    fontSize: 10,
+    color: colors.textPrimary,
+    fontWeight: '600',
+  },
+  friendsText: {
+    ...typography.caption,
+    color: colors.textMuted,
+    flex: 1,
+  },
+  // Friends for large card
+  largeFriendsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  largeFriendsAvatars: {
+    flexDirection: 'row',
+  },
+  largeFriendAvatar: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  largeFriendAvatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 9,
+  },
+  largeFriendAvatarText: {
+    fontSize: 9,
+    color: colors.textPrimary,
+    fontWeight: '600',
+  },
+  largeFriendsText: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    fontSize: 11,
   },
 });

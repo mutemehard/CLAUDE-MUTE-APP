@@ -16,7 +16,7 @@ import { useStore } from '../hooks';
 import { concertService, notificationService, calendarService } from '../services';
 import { shareConcert, haptics } from '../utils';
 import { colors, spacing, typography, borderRadius } from '../constants';
-import { RootStackParamList, Concert } from '../types';
+import { RootStackParamList, Concert, ParticipationStatus } from '../types';
 
 type RouteProps = RouteProp<RootStackParamList, 'ConcertDetail'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -25,7 +25,15 @@ export const ConcertDetailScreen: React.FC = () => {
   const route = useRoute<RouteProps>();
   const navigation = useNavigation<NavigationProp>();
   const { concertId } = route.params;
-  const { isFavorite, addFavorite, removeFavorite, addAttendedConcert } = useStore();
+  const {
+    isFavorite,
+    addFavorite,
+    removeFavorite,
+    addAttendedConcert,
+    setParticipation,
+    getParticipation,
+    getFriendsForConcert,
+  } = useStore();
 
   const [concert, setConcert] = useState<Concert | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -33,6 +41,10 @@ export const ConcertDetailScreen: React.FC = () => {
   const [similarConcerts, setSimilarConcerts] = useState<Concert[]>([]);
   const [reminderSet, setReminderSet] = useState(false);
   const [calendarAdded, setCalendarAdded] = useState(false);
+
+  // Social participation (Facebook Events style)
+  const participation = getParticipation(concertId);
+  const friendsInfo = getFriendsForConcert(concertId);
 
   useEffect(() => {
     loadConcert();
@@ -216,6 +228,21 @@ export const ConcertDetailScreen: React.FC = () => {
     navigation.push('ConcertDetail', { concertId: similarConcert.id });
   };
 
+  // Handle participation (Going / Interested)
+  const handleParticipation = (status: ParticipationStatus) => {
+    if (!concert) return;
+    haptics.medium();
+
+    // Toggle if already set
+    const newStatus = participation === status ? null : status;
+
+    setParticipation(concertId, newStatus, {
+      artistName: concert.artist.name,
+      venueName: concert.venue.name,
+      date: concert.date,
+    });
+  };
+
   if (isLoading || !concert) {
     return (
       <SafeAreaView style={styles.container}>
@@ -334,6 +361,80 @@ export const ConcertDetailScreen: React.FC = () => {
               <Text style={styles.quickStatLabel}>A partir de</Text>
             </View>
           </View>
+
+          {/* Participation Buttons (Facebook Events style) */}
+          {!isPast && (
+            <View style={styles.participationSection}>
+              <TouchableOpacity
+                style={[
+                  styles.participationButton,
+                  participation === 'going' && styles.participationButtonActive,
+                ]}
+                onPress={() => handleParticipation('going')}
+              >
+                <Text style={styles.participationIcon}>
+                  {participation === 'going' ? '✓' : '🎫'}
+                </Text>
+                <Text style={[
+                  styles.participationText,
+                  participation === 'going' && styles.participationTextActive,
+                ]}>
+                  {participation === 'going' ? 'J\'y vais !' : 'J\'y vais'}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.participationButton,
+                  styles.participationButtonSecondary,
+                  participation === 'interested' && styles.participationButtonInterested,
+                ]}
+                onPress={() => handleParticipation('interested')}
+              >
+                <Text style={styles.participationIcon}>
+                  {participation === 'interested' ? '⭐' : '☆'}
+                </Text>
+                <Text style={[
+                  styles.participationText,
+                  participation === 'interested' && styles.participationTextActive,
+                ]}>
+                  {participation === 'interested' ? 'Interesse' : 'Ca m\'interesse'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Friends going (social proof) */}
+          {(friendsInfo.going.length > 0 || friendsInfo.interested.length > 0) && (
+            <View style={styles.friendsSection}>
+              {friendsInfo.going.length > 0 && (
+                <View style={styles.friendsRow}>
+                  <View style={styles.friendsAvatars}>
+                    {friendsInfo.going.slice(0, 3).map((friend, i) => (
+                      <View key={friend.id} style={[styles.friendAvatar, { marginLeft: i > 0 ? -8 : 0 }]}>
+                        <Text style={styles.friendAvatarText}>
+                          {friend.displayName.charAt(0)}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                  <Text style={styles.friendsText}>
+                    {friendsInfo.going.length === 1
+                      ? `${friendsInfo.going[0].displayName} y va`
+                      : `${friendsInfo.going[0].displayName} et ${friendsInfo.going.length - 1} autre${friendsInfo.going.length > 2 ? 's' : ''} y vont`
+                    }
+                  </Text>
+                </View>
+              )}
+              {friendsInfo.interested.length > 0 && (
+                <View style={styles.friendsRow}>
+                  <Text style={styles.friendsTextMuted}>
+                    {friendsInfo.interested.length} ami{friendsInfo.interested.length > 1 ? 's' : ''} interesse{friendsInfo.interested.length > 1 ? 's' : ''}
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
 
           {/* Venue - clickable */}
           <TouchableOpacity style={styles.venueCard} onPress={handleVenuePress}>
@@ -856,5 +957,84 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.textMuted,
     fontWeight: '600',
+  },
+  // Participation section (Facebook Events style)
+  participationSection: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  participationButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.lg,
+    paddingVertical: spacing.md,
+    gap: spacing.sm,
+  },
+  participationButtonSecondary: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  participationButtonActive: {
+    backgroundColor: colors.success,
+  },
+  participationButtonInterested: {
+    backgroundColor: colors.secondary,
+    borderColor: colors.secondary,
+  },
+  participationIcon: {
+    fontSize: 18,
+  },
+  participationText: {
+    ...typography.body,
+    color: colors.textPrimary,
+    fontWeight: '600',
+  },
+  participationTextActive: {
+    color: colors.textPrimary,
+  },
+  // Friends section
+  friendsSection: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+  },
+  friendsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.xs,
+  },
+  friendsAvatars: {
+    flexDirection: 'row',
+    marginRight: spacing.sm,
+  },
+  friendAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.surface,
+  },
+  friendAvatarText: {
+    ...typography.caption,
+    color: colors.textPrimary,
+    fontWeight: 'bold',
+    fontSize: 10,
+  },
+  friendsText: {
+    ...typography.bodySmall,
+    color: colors.textPrimary,
+  },
+  friendsTextMuted: {
+    ...typography.caption,
+    color: colors.textMuted,
   },
 });

@@ -2,7 +2,19 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Concert, Artist, Venue, ConcertFilters, Favorite, UserLocation, AttendedConcert } from '../types';
+import {
+  Concert,
+  Artist,
+  Venue,
+  ConcertFilters,
+  Favorite,
+  UserLocation,
+  AttendedConcert,
+  ConcertParticipation,
+  ParticipationStatus,
+  Friend,
+  FriendActivity,
+} from '../types';
 import { concertService } from '../services';
 
 interface AppState {
@@ -13,6 +25,11 @@ interface AppState {
   attendedConcerts: AttendedConcert[];
   userLocation: UserLocation | null;
   preferredGenres: string[];
+
+  // Social (Facebook Events style)
+  participations: ConcertParticipation[];
+  friends: Friend[];
+  friendsActivity: FriendActivity[];
 
   // UI State
   isLoading: boolean;
@@ -58,6 +75,16 @@ interface AppState {
   addPreferredGenre: (genre: string) => void;
   removePreferredGenre: (genre: string) => void;
 
+  // Actions - Social (Participations)
+  setParticipation: (concertId: string, status: ParticipationStatus, concertInfo: { artistName: string; venueName: string; date: string }) => void;
+  getParticipation: (concertId: string) => ParticipationStatus;
+  getUpcomingParticipations: (status?: ParticipationStatus) => ConcertParticipation[];
+
+  // Actions - Social (Friends)
+  addFriend: (friend: Friend) => void;
+  removeFriend: (friendId: string) => void;
+  getFriendsForConcert: (concertId: string) => { going: Friend[]; interested: Friend[] };
+
   // Actions - Hydration
   _hasHydrated: boolean;
   setHasHydrated: (state: boolean) => void;
@@ -79,6 +106,9 @@ export const useStore = create<AppState>()(
       attendedConcerts: [],
       userLocation: null,
       preferredGenres: [],
+      participations: [],
+      friends: [],
+      friendsActivity: [],
       isLoading: false,
       error: null,
       filters: defaultFilters,
@@ -251,6 +281,91 @@ export const useStore = create<AppState>()(
           preferredGenres: state.preferredGenres.filter(g => g !== genre)
         }));
       },
+
+      // === Social Actions (Facebook Events style) ===
+
+      // Definir la participation a un concert (Going/Interested)
+      setParticipation: (concertId, status, concertInfo) => {
+        set(state => {
+          const existing = state.participations.findIndex(p => p.concertId === concertId);
+
+          if (status === null) {
+            // Retirer la participation
+            return {
+              participations: state.participations.filter(p => p.concertId !== concertId)
+            };
+          }
+
+          const participation: ConcertParticipation = {
+            concertId,
+            status,
+            addedAt: new Date().toISOString(),
+            ...concertInfo,
+          };
+
+          if (existing >= 0) {
+            // Mettre a jour
+            const updated = [...state.participations];
+            updated[existing] = participation;
+            return { participations: updated };
+          } else {
+            // Ajouter
+            return { participations: [...state.participations, participation] };
+          }
+        });
+      },
+
+      // Recuperer le statut de participation
+      getParticipation: (concertId) => {
+        const participation = get().participations.find(p => p.concertId === concertId);
+        return participation?.status || null;
+      },
+
+      // Recuperer les concerts a venir avec participation
+      getUpcomingParticipations: (status?) => {
+        const now = new Date().toISOString().split('T')[0];
+        return get().participations.filter(p => {
+          const isFuture = p.date >= now;
+          const matchesStatus = !status || p.status === status;
+          return isFuture && matchesStatus;
+        }).sort((a, b) => a.date.localeCompare(b.date));
+      },
+
+      // Ajouter un ami
+      addFriend: (friend) => {
+        set(state => {
+          if (state.friends.some(f => f.id === friend.id)) {
+            return state;
+          }
+          return { friends: [...state.friends, friend] };
+        });
+      },
+
+      // Retirer un ami
+      removeFriend: (friendId) => {
+        set(state => ({
+          friends: state.friends.filter(f => f.id !== friendId),
+          friendsActivity: state.friendsActivity.filter(a => a.friendId !== friendId),
+        }));
+      },
+
+      // Recuperer les amis qui participent a un concert
+      getFriendsForConcert: (concertId) => {
+        const { friends, friendsActivity } = get();
+        const concertActivities = friendsActivity.filter(a => a.concertId === concertId);
+
+        const going = concertActivities
+          .filter(a => a.status === 'going')
+          .map(a => friends.find(f => f.id === a.friendId))
+          .filter((f): f is Friend => f !== undefined);
+
+        const interested = concertActivities
+          .filter(a => a.status === 'interested')
+          .map(a => friends.find(f => f.id === a.friendId))
+          .filter((f): f is Friend => f !== undefined);
+
+        return { going, interested };
+      },
     }),
     {
       name: 'mute-storage',
@@ -263,6 +378,10 @@ export const useStore = create<AppState>()(
         recentSearches: state.recentSearches,
         preferredGenres: state.preferredGenres,
         onboardingCompleted: state.onboardingCompleted,
+        // Social data
+        participations: state.participations,
+        friends: state.friends,
+        friendsActivity: state.friendsActivity,
       }),
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true);

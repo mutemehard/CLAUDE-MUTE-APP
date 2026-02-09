@@ -149,3 +149,56 @@ export interface UserProfile {
   favoriteVenues: string[];
   createdAt?: string;
 }
+
+// === SOCIAL FEATURES (Facebook Events style) ===
+
+// Statut de participation a un concert
+export type ParticipationStatus = 'going' | 'interested' | 'not_going' | null;
+
+// Participation utilisateur a un concert
+export interface ConcertParticipation {
+  concertId: string;
+  status: ParticipationStatus;
+  addedAt: string;
+  artistName: string;
+  venueName: string;
+  date: string;
+}
+
+// Ami/contact
+export interface Friend {
+  id: string;
+  displayName: string;
+  avatarUrl?: string;
+  addedAt: string;
+}
+
+// Activite d'un ami sur un concert
+export interface FriendActivity {
+  friendId: string;
+  friendName: string;
+  friendAvatar?: string;
+  concertId: string;
+  artistName: string;
+  venueName: string;
+  date: string;
+  status: ParticipationStatus;
+  timestamp: string;
+}
+
+// Resume des participations a un concert
+export interface ConcertSocialInfo {
+  concertId: string;
+  goingCount: number;
+  interestedCount: number;
+  friendsGoing: Friend[];
+  friendsInterested: Friend[];
+}
+
+// Stats sociales de l'utilisateur
+export interface SocialStats {
+  totalFriends: number;
+  concertsGoing: number;
+  concertsInterested: number;
+  sharedConcertsWithFriends: number;
+}

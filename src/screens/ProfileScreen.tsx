@@ -14,11 +14,14 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, typography, borderRadius, APP_CONFIG, MUSIC_GENRES } from '../constants';
-import { AttendedConcert, RootStackParamList } from '../types';
+import { AttendedConcert, RootStackParamList, ConcertParticipation } from '../types';
 import { useStore } from '../hooks';
 import { haptics } from '../utils';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
+// Onglets pour les concerts à venir
+type UpcomingTab = 'going' | 'interested';
 
 // Mock data pour les concerts vus
 const mockAttendedConcerts: AttendedConcert[] = [
@@ -71,11 +74,18 @@ export const ProfileScreen: React.FC = () => {
     addAttendedConcert,
     removeAttendedConcert,
     updateAttendedConcert,
+    getUpcomingParticipations,
+    friends,
   } = useStore();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [selectedGenres, setSelectedGenres] = useState<string[]>(['Techno', 'Electronic', 'Rock']);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newConcert, setNewConcert] = useState({ artist: '', venue: '', date: '', rating: 0 });
+  const [upcomingTab, setUpcomingTab] = useState<UpcomingTab>('going');
+
+  // Concerts à venir (Going et Interested)
+  const upcomingGoing = getUpcomingParticipations('going');
+  const upcomingInterested = getUpcomingParticipations('interested');
 
   // Utilise le store ou les mocks si vide
   const attendedConcerts = storeAttendedConcerts.length > 0 ? storeAttendedConcerts : mockAttendedConcerts;
@@ -275,6 +285,111 @@ export const ProfileScreen: React.FC = () => {
             </View>
           )}
         </View>
+
+        {/* Section Mes concerts à venir (Facebook Events style) */}
+        {(upcomingGoing.length > 0 || upcomingInterested.length > 0) && (
+          <View style={styles.upcomingSection}>
+            <Text style={styles.sectionTitle}>Mes concerts</Text>
+
+            {/* Tabs Going / Interested */}
+            <View style={styles.upcomingTabs}>
+              <TouchableOpacity
+                style={[
+                  styles.upcomingTab,
+                  upcomingTab === 'going' && styles.upcomingTabActive,
+                ]}
+                onPress={() => {
+                  haptics.selection();
+                  setUpcomingTab('going');
+                }}
+              >
+                <Text style={styles.upcomingTabIcon}>✓</Text>
+                <Text style={[
+                  styles.upcomingTabText,
+                  upcomingTab === 'going' && styles.upcomingTabTextActive,
+                ]}>
+                  J'y vais ({upcomingGoing.length})
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.upcomingTab,
+                  upcomingTab === 'interested' && styles.upcomingTabActive,
+                ]}
+                onPress={() => {
+                  haptics.selection();
+                  setUpcomingTab('interested');
+                }}
+              >
+                <Text style={styles.upcomingTabIcon}>★</Text>
+                <Text style={[
+                  styles.upcomingTabText,
+                  upcomingTab === 'interested' && styles.upcomingTabTextActive,
+                ]}>
+                  Interesse ({upcomingInterested.length})
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Liste des concerts */}
+            <View style={styles.upcomingList}>
+              {(upcomingTab === 'going' ? upcomingGoing : upcomingInterested).map((participation) => (
+                <TouchableOpacity
+                  key={participation.concertId}
+                  style={styles.upcomingItem}
+                  onPress={() => {
+                    haptics.light();
+                    navigation.navigate('ConcertDetail', { concertId: participation.concertId });
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.upcomingDate}>
+                    <Text style={styles.upcomingDateDay}>
+                      {new Date(participation.date).getDate()}
+                    </Text>
+                    <Text style={styles.upcomingDateMonth}>
+                      {new Date(participation.date).toLocaleDateString('fr-FR', { month: 'short' })}
+                    </Text>
+                  </View>
+                  <View style={styles.upcomingInfo}>
+                    <Text style={styles.upcomingArtist} numberOfLines={1}>
+                      {participation.artistName}
+                    </Text>
+                    <Text style={styles.upcomingVenue} numberOfLines={1}>
+                      {participation.venueName}
+                    </Text>
+                  </View>
+                  <View style={styles.upcomingStatus}>
+                    <Text style={styles.upcomingStatusIcon}>
+                      {upcomingTab === 'going' ? '✓' : '★'}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+
+              {((upcomingTab === 'going' && upcomingGoing.length === 0) ||
+                (upcomingTab === 'interested' && upcomingInterested.length === 0)) && (
+                <View style={styles.upcomingEmpty}>
+                  <Text style={styles.upcomingEmptyText}>
+                    {upcomingTab === 'going'
+                      ? "Tu n'as pas encore marque de concerts"
+                      : "Aucun concert en favoris"}
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            {/* Stats amis */}
+            {friends.length > 0 && (
+              <View style={styles.friendsStats}>
+                <Text style={styles.friendsStatsText}>
+                  {friends.length} ami{friends.length > 1 ? 's' : ''} connecte{friends.length > 1 ? 's' : ''}
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
 
         {/* Highlights */}
         {stats.topArtist && (
@@ -816,6 +931,121 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     marginTop: spacing.sm,
     opacity: 0.5,
+  },
+  // Upcoming concerts section (Facebook Events style)
+  upcomingSection: {
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.xl,
+    padding: spacing.md,
+  },
+  upcomingTabs: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+    marginBottom: spacing.md,
+  },
+  upcomingTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surfaceLight,
+    borderRadius: borderRadius.lg,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    gap: spacing.xs,
+  },
+  upcomingTabActive: {
+    backgroundColor: colors.primary,
+  },
+  upcomingTabIcon: {
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  upcomingTabText: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+    fontWeight: '500',
+  },
+  upcomingTabTextActive: {
+    color: colors.textPrimary,
+    fontWeight: '600',
+  },
+  upcomingList: {
+    gap: spacing.sm,
+  },
+  upcomingItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surfaceLight,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    gap: spacing.md,
+  },
+  upcomingDate: {
+    alignItems: 'center',
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    minWidth: 48,
+  },
+  upcomingDateDay: {
+    ...typography.h3,
+    color: colors.textPrimary,
+    fontWeight: '700',
+  },
+  upcomingDateMonth: {
+    ...typography.caption,
+    color: colors.textPrimary,
+    textTransform: 'uppercase',
+    fontSize: 10,
+  },
+  upcomingInfo: {
+    flex: 1,
+  },
+  upcomingArtist: {
+    ...typography.body,
+    color: colors.textPrimary,
+    fontWeight: '600',
+  },
+  upcomingVenue: {
+    ...typography.caption,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  upcomingStatus: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  upcomingStatusIcon: {
+    fontSize: 16,
+    color: colors.primary,
+  },
+  upcomingEmpty: {
+    paddingVertical: spacing.lg,
+    alignItems: 'center',
+  },
+  upcomingEmptyText: {
+    ...typography.bodySmall,
+    color: colors.textMuted,
+  },
+  friendsStats: {
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.surfaceLight,
+    alignItems: 'center',
+  },
+  friendsStatsText: {
+    ...typography.caption,
+    color: colors.secondary,
   },
   // Modal styles
   modalOverlay: {

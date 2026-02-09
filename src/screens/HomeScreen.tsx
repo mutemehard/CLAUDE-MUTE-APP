@@ -72,7 +72,7 @@ const getNextWeekendDates = (): { start: Date; end: Date } => {
 
 export const HomeScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
-  const { concerts, filters, isLoading, fetchConcerts, isFavorite, addFavorite, removeFavorite } = useStore();
+  const { concerts, filters, isLoading, fetchConcerts, isFavorite, addFavorite, removeFavorite, getFriendsForConcert } = useStore();
   const { location, getDistanceFromUser, formatDistance, requestPermission } = useLocation();
   const [activeTab, setActiveTab] = useState('tonight');
   const [displayedConcerts, setDisplayedConcerts] = useState<Concert[]>([]);
@@ -595,6 +595,7 @@ export const HomeScreen: React.FC = () => {
             onFavoritePress={() => handleFavoritePress(item)}
             isFavorite={isFavorite('concert', item.id)}
             distance={concertDistances[item.id]}
+            friendsInfo={getFriendsForConcert(item.id)}
           />
         )}
         ListHeaderComponent={renderHeader}
