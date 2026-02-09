@@ -46,7 +46,18 @@ export interface Concert {
   description?: string;
 }
 
-export type DataSource = 'bandsintown' | 'songkick' | 'ticketmaster' | 'eventbrite' | 'openagenda' | 'manual';
+export type DataSource =
+  | 'bandsintown'
+  | 'songkick'
+  | 'ticketmaster'
+  | 'eventbrite'
+  | 'openagenda'
+  | 'shotgun'
+  | 'residentAdvisor'
+  | 'parisBy'
+  | 'fnac'
+  | 'digitick'
+  | 'manual';
 
 export interface ConcertFilters {
   dateRange?: {
@@ -111,6 +122,7 @@ export type RootStackParamList = {
   VenueDetail: { venueId: string };
   Filters: undefined;
   Settings: undefined;
+  Map: undefined;
 };
 
 // Type pour l'historique des concerts vus

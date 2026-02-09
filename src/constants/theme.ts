@@ -5,6 +5,8 @@ export const colors = {
   primary: '#FF4D4D',      // Rouge vif - accent principal (style Dice)
   secondary: '#FF8C42',    // Orange - accent secondaire
   accent: '#FFFFFF',       // Blanc pour highlights
+  white: '#FFFFFF',        // Blanc pur
+  black: '#000000',        // Noir pur
 
   // Backgrounds - Tres sombre style Dice
   background: '#000000',   // Noir pur
@@ -92,6 +94,16 @@ export const typography = {
     fontSize: 12,
     fontWeight: 'normal' as const,
     lineHeight: 16,
+  },
+  button: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    lineHeight: 24,
+  },
+  buttonSmall: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    lineHeight: 20,
   },
 };
 

@@ -12,6 +12,7 @@ interface AppState {
   favorites: Favorite[];
   attendedConcerts: AttendedConcert[];
   userLocation: UserLocation | null;
+  preferredGenres: string[];
 
   // UI State
   isLoading: boolean;
