@@ -53,6 +53,11 @@ interface AppState {
   // Actions - Onboarding
   setOnboardingCompleted: (completed: boolean) => void;
 
+  // Actions - Preferences
+  setPreferredGenres: (genres: string[]) => void;
+  addPreferredGenre: (genre: string) => void;
+  removePreferredGenre: (genre: string) => void;
+
   // Actions - Hydration
   _hasHydrated: boolean;
   setHasHydrated: (state: boolean) => void;
@@ -73,6 +78,7 @@ export const useStore = create<AppState>()(
       favorites: [],
       attendedConcerts: [],
       userLocation: null,
+      preferredGenres: [],
       isLoading: false,
       error: null,
       filters: defaultFilters,
@@ -226,6 +232,25 @@ export const useStore = create<AppState>()(
       setOnboardingCompleted: (completed) => {
         set({ onboardingCompleted: completed });
       },
+
+      // Preferences - Genres
+      setPreferredGenres: (genres) => {
+        set({ preferredGenres: genres });
+      },
+
+      addPreferredGenre: (genre) => {
+        set(state => ({
+          preferredGenres: state.preferredGenres.includes(genre)
+            ? state.preferredGenres
+            : [...state.preferredGenres, genre]
+        }));
+      },
+
+      removePreferredGenre: (genre) => {
+        set(state => ({
+          preferredGenres: state.preferredGenres.filter(g => g !== genre)
+        }));
+      },
     }),
     {
       name: 'mute-storage',
@@ -236,6 +261,7 @@ export const useStore = create<AppState>()(
         attendedConcerts: state.attendedConcerts,
         filters: state.filters,
         recentSearches: state.recentSearches,
+        preferredGenres: state.preferredGenres,
         onboardingCompleted: state.onboardingCompleted,
       }),
       onRehydrateStorage: () => (state) => {

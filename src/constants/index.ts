@@ -4,6 +4,7 @@ export * from './theme';
 export const APP_CONFIG = {
   name: 'MUTE',
   tagline: 'Ne rate plus rien.',
+  version: '1.0.0',
   defaultCity: 'Paris',
   defaultCountry: 'France',
   defaultCoordinates: {
