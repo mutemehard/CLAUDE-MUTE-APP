@@ -13,7 +13,7 @@ import {
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useStore } from '../hooks';
-import { concertService, notificationService } from '../services';
+import { concertService, notificationService, calendarService } from '../services';
 import { shareConcert } from '../utils';
 import { colors, spacing, typography, borderRadius } from '../constants';
 import { RootStackParamList, Concert } from '../types';
@@ -32,6 +32,7 @@ export const ConcertDetailScreen: React.FC = () => {
   const [otherDates, setOtherDates] = useState<Concert[]>([]);
   const [similarConcerts, setSimilarConcerts] = useState<Concert[]>([]);
   const [reminderSet, setReminderSet] = useState(false);
+  const [calendarAdded, setCalendarAdded] = useState(false);
 
   useEffect(() => {
     loadConcert();
@@ -140,6 +141,26 @@ export const ConcertDetailScreen: React.FC = () => {
         'Impossible d\'activer le rappel. Verifie tes parametres de notifications.',
         [{ text: 'OK' }]
       );
+    }
+  };
+
+  const handleAddToCalendar = async () => {
+    if (!concert) return;
+
+    try {
+      const result = await calendarService.addConcert(concert);
+      if (result.success) {
+        setCalendarAdded(true);
+        Alert.alert(
+          'Ajoute au calendrier',
+          `${concert.artist.name} a ete ajoute a ton calendrier`,
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert('Erreur', result.error || 'Impossible d\'ajouter au calendrier');
+      }
+    } catch (error) {
+      Alert.alert('Erreur', 'Impossible d\'ajouter au calendrier');
     }
   };
 
@@ -348,6 +369,19 @@ export const ConcertDetailScreen: React.FC = () => {
                 {reminderSet ? 'Rappel active' : 'Me rappeler'}
               </Text>
             </TouchableOpacity>
+
+            {!isPast && (
+              <TouchableOpacity
+                style={[styles.actionButton, calendarAdded && styles.actionButtonActive]}
+                onPress={handleAddToCalendar}
+                disabled={calendarAdded}
+              >
+                <Text style={styles.actionIcon}>{calendarAdded ? '📅' : '📆'}</Text>
+                <Text style={styles.actionText}>
+                  {calendarAdded ? 'Dans le calendrier' : 'Ajouter au calendrier'}
+                </Text>
+              </TouchableOpacity>
+            )}
 
             {isPast && (
               <TouchableOpacity style={styles.actionButton} onPress={handleMarkAttended}>

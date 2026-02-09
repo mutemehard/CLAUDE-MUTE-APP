@@ -3,9 +3,11 @@ import { Concert, ConcertFilters, Artist, Venue } from '../types';
 import { mockConcerts, mockArtists, mockVenues } from './mockData';
 import { bandsintownApi } from './api/bandsintown';
 import { openagendaApi } from './api/openagenda';
+import { scrapeAllEvents, mergeScrapedConcerts } from './scrapers';
 
 // Configuration
 const USE_REAL_API = false; // Passer a true quand les cles API sont configurees
+const USE_SCRAPERS = true; // Utilise les scrapers pour plus de donnees
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 // Cache simple en memoire
@@ -170,17 +172,38 @@ export const concertService = {
     if (cached) return cached;
 
     let concerts: Concert[] = [];
+    const concertSources: Concert[][] = [mockConcerts];
 
+    // Fetch depuis les APIs si active
     if (USE_REAL_API) {
       try {
-        // Recupere les concerts depuis les APIs
         const apiConcerts = await this.fetchFromApis();
-        concerts = apiConcerts.length > 0 ? apiConcerts : mockConcerts;
+        if (apiConcerts.length > 0) {
+          concertSources.push(apiConcerts);
+        }
       } catch (error) {
         console.error('Error fetching from APIs:', error);
-        concerts = mockConcerts;
       }
-    } else {
+    }
+
+    // Fetch depuis les scrapers si active
+    if (USE_SCRAPERS) {
+      try {
+        const scraperResults = await scrapeAllEvents({ city: 'Paris' });
+        const scrapedConcerts = mergeScrapedConcerts(scraperResults);
+        if (scrapedConcerts.length > 0) {
+          concertSources.push(scrapedConcerts);
+        }
+      } catch (error) {
+        console.error('Error fetching from scrapers:', error);
+      }
+    }
+
+    // Merge toutes les sources
+    concerts = mergeConcerts(concertSources);
+
+    // Si aucun resultat, fallback sur mocks
+    if (concerts.length === 0) {
       await delay(300);
       concerts = mockConcerts;
     }

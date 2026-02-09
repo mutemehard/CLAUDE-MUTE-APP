@@ -7,3 +7,8 @@ export {
   generateConcertDeepLink,
 } from './share';
 export type { ShareResult } from './share';
+
+export {
+  shareArtist,
+  generateArtistShareText,
+} from './shareArtist';
