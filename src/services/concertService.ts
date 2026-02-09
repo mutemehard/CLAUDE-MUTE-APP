@@ -155,12 +155,32 @@ const mergeConcerts = (concertArrays: Concert[][]): Concert[] => {
   });
 };
 
-// Artistes populaires a rechercher sur Bandsintown
+// Artistes populaires a rechercher sur Bandsintown (concerts a Paris)
 const POPULAR_ARTISTS = [
-  'Phoenix', 'Justice', 'Daft Punk', 'Air', 'M83',
-  'Charlotte de Witte', 'Amelie Lens', 'Nina Kraviz',
-  'Orelsan', 'PNL', 'Angele', 'Stromae',
-  'The Blaze', 'Polo & Pan', 'Parcels',
+  // Francais - Pop/Rock
+  'Phoenix', 'Christine and the Queens', 'Angele', 'Stromae', 'Clara Luciani',
+  'Pomme', 'L\'Imperatrice', 'Juliette Armanet', 'Woodkid', 'Flavien Berger',
+  // Francais - Rap/Hip-Hop
+  'Orelsan', 'Nekfeu', 'PNL', 'Vald', 'Lomepal', 'Hamza', 'Laylow', 'SDM',
+  'Josman', 'Ninho', 'Jul', 'Booba', 'Damso', 'Gazo', 'Tiakola',
+  // Electronic - Francais
+  'Justice', 'Polo & Pan', 'The Blaze', 'Myd', 'Petit Biscuit', 'Kungs',
+  'DJ Snake', 'David Guetta', 'Gesaffelstein', 'Rone', 'Worakls', 'N\'to',
+  'Bon Entendeur', 'Vladimir Cauchemar', 'Louisahhh', 'Folamour',
+  // Electronic - International
+  'Charlotte de Witte', 'Amelie Lens', 'Nina Kraviz', 'Jeff Mills', 'Bicep',
+  'Moderat', 'Bonobo', 'Jamie xx', 'Four Tet', 'Floating Points', 'Solomun',
+  'Tale Of Us', 'Peggy Gou', 'Ben Bohmer', 'RÜFÜS DU SOL', 'Fred Again',
+  // Rock/Indie - International
+  'Arctic Monkeys', 'Tame Impala', 'The 1975', 'Mac DeMarco', 'Parcels',
+  'Disclosure', 'Khruangbin', 'Jungle', 'Kaytranada', 'Rosalia',
+  // R&B/Soul
+  'Aya Nakamura', 'Yseult', 'Lous and the Yakuza', 'Jorja Smith', 'SZA',
+  // Classical/Piano
+  'Sofiane Pamart', 'Ludovico Einaudi', 'Hans Zimmer',
+  // Autres populaires
+  'Dua Lipa', 'The Weeknd', 'Billie Eilish', 'Post Malone', 'Travis Scott',
+  'Kendrick Lamar', 'Tyler the Creator', 'Frank Ocean', 'Bad Bunny',
 ];
 
 // API publique du service
@@ -218,30 +238,44 @@ export const concertService = {
 
   // Fetch depuis les vraies APIs
   async fetchFromApis(): Promise<Concert[]> {
-    const concertPromises: Promise<Concert[]>[] = [];
+    const allConcerts: Concert[][] = [];
+    const batchSize = 10; // Nombre de requetes en parallele
 
-    // Bandsintown - recherche par artistes populaires
-    for (const artistName of POPULAR_ARTISTS.slice(0, 5)) {
-      concertPromises.push(
+    // Bandsintown - recherche par artistes populaires en batches
+    for (let i = 0; i < POPULAR_ARTISTS.length; i += batchSize) {
+      const batch = POPULAR_ARTISTS.slice(i, i + batchSize);
+      const batchPromises = batch.map(artistName =>
         bandsintownApi.getArtistEventsInParis(artistName)
           .catch(err => {
-            console.warn(`Bandsintown error for ${artistName}:`, err);
+            // Silently fail for individual artists
             return [];
           })
       );
+
+      try {
+        const batchResults = await Promise.all(batchPromises);
+        allConcerts.push(...batchResults);
+      } catch (error) {
+        console.warn('Bandsintown batch error:', error);
+      }
+
+      // Petit delai entre les batches pour eviter le rate limiting
+      if (i + batchSize < POPULAR_ARTISTS.length) {
+        await delay(200);
+      }
     }
 
-    // OpenAgenda - concerts a Paris
-    concertPromises.push(
-      openagendaApi.getWeekEvents()
-        .catch(err => {
-          console.warn('OpenAgenda error:', err);
-          return [];
-        })
-    );
+    // OpenAgenda - concerts a Paris (si configure)
+    try {
+      const openAgendaConcerts = await openagendaApi.getWeekEvents();
+      if (openAgendaConcerts.length > 0) {
+        allConcerts.push(openAgendaConcerts);
+      }
+    } catch (err) {
+      // OpenAgenda optionnel
+    }
 
-    const results = await Promise.all(concertPromises);
-    return mergeConcerts(results);
+    return mergeConcerts(allConcerts);
   },
 
   // Récupère les concerts avec filtres
@@ -261,6 +295,80 @@ export const concertService = {
   async getWeekConcerts(): Promise<Concert[]> {
     const concerts = await this.getAllConcerts();
     return concerts.filter(c => isThisWeek(c.date));
+  },
+
+  // Concerts du weekend (vendredi, samedi, dimanche)
+  async getWeekendConcerts(): Promise<Concert[]> {
+    const concerts = await this.getAllConcerts();
+    const today = new Date();
+    const dayOfWeek = today.getDay();
+
+    // Trouve le prochain vendredi
+    const daysUntilFriday = (5 - dayOfWeek + 7) % 7;
+    const friday = new Date(today);
+    friday.setDate(today.getDate() + (daysUntilFriday === 0 && today.getHours() < 18 ? 0 : daysUntilFriday));
+    friday.setHours(0, 0, 0, 0);
+
+    // Dimanche soir
+    const sunday = new Date(friday);
+    sunday.setDate(friday.getDate() + 2);
+    sunday.setHours(23, 59, 59, 999);
+
+    return concerts.filter(c => {
+      const concertDate = new Date(c.date);
+      return concertDate >= friday && concertDate <= sunday;
+    });
+  },
+
+  // Concerts d'un mois specifique
+  async getMonthConcerts(year: number, month: number): Promise<Concert[]> {
+    const concerts = await this.getAllConcerts();
+    return concerts.filter(c => {
+      const date = new Date(c.date);
+      return date.getFullYear() === year && date.getMonth() === month;
+    });
+  },
+
+  // Concerts des X prochains jours
+  async getUpcomingConcerts(days: number = 30): Promise<Concert[]> {
+    const concerts = await this.getAllConcerts();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const endDate = new Date(today);
+    endDate.setDate(today.getDate() + days);
+
+    return concerts.filter(c => {
+      const concertDate = new Date(c.date);
+      return concertDate >= today && concertDate <= endDate;
+    });
+  },
+
+  // Stats sur les concerts disponibles
+  async getStats(): Promise<{
+    total: number;
+    thisWeek: number;
+    thisMonth: number;
+    genres: Record<string, number>;
+    venues: Record<string, number>;
+  }> {
+    const concerts = await this.getAllConcerts();
+    const genres: Record<string, number> = {};
+    const venues: Record<string, number> = {};
+
+    concerts.forEach(c => {
+      if (c.genre) {
+        genres[c.genre] = (genres[c.genre] || 0) + 1;
+      }
+      venues[c.venue.name] = (venues[c.venue.name] || 0) + 1;
+    });
+
+    return {
+      total: concerts.length,
+      thisWeek: concerts.filter(c => isThisWeek(c.date)).length,
+      thisMonth: concerts.filter(c => isThisMonth(c.date)).length,
+      genres,
+      venues,
+    };
   },
 
   // Récupère un concert par ID

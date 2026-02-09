@@ -30,7 +30,14 @@ const mainTabs = [
   { id: 'tonight', label: 'Ce soir', icon: '🌙' },
   { id: 'weekend', label: 'Week-end', icon: '🎉' },
   { id: 'week', label: 'Semaine', icon: '📅' },
+  { id: 'month', label: 'Ce mois', icon: '📆' },
   { id: 'all', label: 'Tout', icon: '🎵' },
+];
+
+// Noms des mois en francais
+const MONTH_NAMES = [
+  'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+  'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre',
 ];
 
 // Fonction pour verifier si c'est le week-end
@@ -72,6 +79,23 @@ export const HomeScreen: React.FC = () => {
   const [popularArtists, setPopularArtists] = useState<Artist[]>([]);
   const [trendingVenues, setTrendingVenues] = useState<Venue[]>([]);
   const [selectedGenre, setSelectedGenre] = useState<string | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+
+  // Genere les mois disponibles (4 prochains mois)
+  const availableMonths = useMemo(() => {
+    const months = [];
+    const now = new Date();
+    for (let i = 0; i < 4; i++) {
+      const date = new Date(now.getFullYear(), now.getMonth() + i, 1);
+      months.push({
+        month: date.getMonth(),
+        year: date.getFullYear(),
+        label: MONTH_NAMES[date.getMonth()],
+      });
+    }
+    return months;
+  }, []);
 
   // Calculate distances for concerts
   const concertDistances = useMemo(() => {
@@ -141,10 +165,19 @@ export const HomeScreen: React.FC = () => {
           filtered.filter(c => new Date(c.date) <= weekFromNow)
         );
         break;
+      case 'month':
+        setDisplayedConcerts(
+          filtered.filter(c => {
+            const concertDate = new Date(c.date);
+            return concertDate.getMonth() === selectedMonth &&
+                   concertDate.getFullYear() === selectedYear;
+          })
+        );
+        break;
       default:
         setDisplayedConcerts(filtered);
     }
-  }, [activeTab, concerts, selectedGenre]);
+  }, [activeTab, concerts, selectedGenre, selectedMonth, selectedYear]);
 
   const handleConcertPress = (concert: Concert) => {
     navigation.navigate('ConcertDetail', { concertId: concert.id });
@@ -200,6 +233,13 @@ export const HomeScreen: React.FC = () => {
     }
   };
 
+  // Handler pour selectionner un mois
+  const handleMonthPress = (month: number, year: number) => {
+    haptics.selection();
+    setSelectedMonth(month);
+    setSelectedYear(year);
+  };
+
   // Compte pour chaque onglet
   const getCounts = () => {
     const today = new Date().toISOString().split('T')[0];
@@ -214,11 +254,53 @@ export const HomeScreen: React.FC = () => {
         return d >= start && d <= end;
       }).length,
       week: concerts.filter(c => new Date(c.date) <= weekFromNow).length,
+      month: concerts.filter(c => {
+        const d = new Date(c.date);
+        return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
+      }).length,
       all: concerts.length,
     };
   };
 
   const counts = getCounts();
+
+  // Render month picker (only when month tab is active)
+  const renderMonthPicker = () => {
+    if (activeTab !== 'month') return null;
+
+    return (
+      <View style={styles.monthPicker}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.monthPickerContent}
+        >
+          {availableMonths.map((m, index) => (
+            <TouchableOpacity
+              key={`${m.year}-${m.month}`}
+              style={[
+                styles.monthButton,
+                selectedMonth === m.month && selectedYear === m.year && styles.monthButtonActive,
+              ]}
+              onPress={() => handleMonthPress(m.month, m.year)}
+            >
+              <Text
+                style={[
+                  styles.monthButtonText,
+                  selectedMonth === m.month && selectedYear === m.year && styles.monthButtonTextActive,
+                ]}
+              >
+                {m.label}
+              </Text>
+              {index === 0 && (
+                <Text style={styles.monthButtonSubtext}>En cours</Text>
+              )}
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+    );
+  };
 
   // Featured concert (first one for tonight or first one available)
   const featuredConcert = displayedConcerts[0];
@@ -456,6 +538,9 @@ export const HomeScreen: React.FC = () => {
         ))}
       </View>
 
+      {/* Month picker - visible only when month tab is active */}
+      {renderMonthPicker()}
+
       {/* Liste des concerts avec header */}
       <FlatList
         data={displayedConcerts.slice(featuredConcert ? 1 : 0)}
@@ -622,6 +707,41 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingBottom: spacing.xxl,
+  },
+  // Month picker
+  monthPicker: {
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  monthPickerContent: {
+    paddingHorizontal: spacing.md,
+    gap: spacing.sm,
+  },
+  monthButton: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.lg,
+    backgroundColor: colors.surface,
+    minWidth: 100,
+    alignItems: 'center',
+  },
+  monthButtonActive: {
+    backgroundColor: colors.primary,
+  },
+  monthButtonText: {
+    ...typography.body,
+    color: colors.textSecondary,
+    fontWeight: '600',
+  },
+  monthButtonTextActive: {
+    color: colors.textPrimary,
+  },
+  monthButtonSubtext: {
+    ...typography.caption,
+    color: colors.textMuted,
+    fontSize: 9,
+    marginTop: 2,
   },
   // Featured concert
   featuredCard: {
