@@ -20,3 +20,6 @@ export { locationService } from './locationService';
 // Calendar
 export { calendarService } from './calendarService';
 export type { CalendarEventResult } from './calendarService';
+
+// Recommendations
+export { recommendationService } from './recommendationService';

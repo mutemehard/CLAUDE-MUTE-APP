@@ -17,3 +17,14 @@ export {
   shareVenue,
   generateVenueShareText,
 } from './shareVenue';
+
+export {
+  haptics,
+  lightImpact,
+  mediumImpact,
+  heavyImpact,
+  successNotification,
+  errorNotification,
+  warningNotification,
+  selectionFeedback,
+} from './haptics';
