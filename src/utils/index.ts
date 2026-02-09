@@ -12,3 +12,8 @@ export {
   shareArtist,
   generateArtistShareText,
 } from './shareArtist';
+
+export {
+  shareVenue,
+  generateVenueShareText,
+} from './shareVenue';

@@ -5,10 +5,10 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Image,
   SafeAreaView,
   Linking,
   Dimensions,
+  Alert,
 } from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -16,6 +16,7 @@ import MapView, { Marker } from 'react-native-maps';
 import { ConcertCard } from '../components/ConcertCard';
 import { useStore } from '../hooks';
 import { venueService, concertService } from '../services';
+import { shareVenue } from '../utils';
 import { colors, spacing, typography, borderRadius } from '../constants';
 import { RootStackParamList, Venue, Concert } from '../types';
 
@@ -96,6 +97,14 @@ export const VenueDetailScreen: React.FC = () => {
     }
   };
 
+  const handleShare = async () => {
+    if (!venue) return;
+    const result = await shareVenue(venue);
+    if (!result.success && result.error) {
+      Alert.alert('Erreur', result.error);
+    }
+  };
+
   const handleConcertPress = (concert: Concert) => {
     navigation.navigate('ConcertDetail', { concertId: concert.id });
   };
@@ -158,13 +167,21 @@ export const VenueDetailScreen: React.FC = () => {
             <Text style={styles.backIcon}>←</Text>
           </TouchableOpacity>
 
-          {/* Favorite button */}
-          <TouchableOpacity
-            style={styles.favoriteHeaderButton}
-            onPress={handleFavorite}
-          >
-            <Text style={styles.favoriteHeaderIcon}>{favorite ? '❤️' : '🤍'}</Text>
-          </TouchableOpacity>
+          {/* Header actions */}
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              style={styles.headerActionButton}
+              onPress={handleShare}
+            >
+              <Text style={styles.headerActionIcon}>📤</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.headerActionButton}
+              onPress={handleFavorite}
+            >
+              <Text style={styles.headerActionIcon}>{favorite ? '❤️' : '🤍'}</Text>
+            </TouchableOpacity>
+          </View>
 
           {/* Open in Maps button */}
           <TouchableOpacity
@@ -344,10 +361,14 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontSize: 24,
   },
-  favoriteHeaderButton: {
+  headerActions: {
     position: 'absolute',
     top: spacing.md,
     right: spacing.md,
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  headerActionButton: {
     width: 40,
     height: 40,
     backgroundColor: 'rgba(0,0,0,0.5)',
@@ -355,8 +376,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  favoriteHeaderIcon: {
-    fontSize: 20,
+  headerActionIcon: {
+    fontSize: 18,
   },
   openMapsButton: {
     position: 'absolute',
