@@ -7,7 +7,7 @@ export const API_CONFIG = {
   // Inscription: https://www.artists.bandsintown.com/support/api-installation
   bandsintown: {
     appId: 'mute_concert_app', // Votre app_id Bandsintown
-    enabled: false, // Passer a true apres configuration
+    enabled: true, // Active pour fetcher les vrais concerts
   },
 
   // OpenAgenda API
@@ -25,7 +25,7 @@ export const API_CONFIG = {
 
   // Configuration generale
   cache: {
-    duration: 5 * 60 * 1000, // 5 minutes en millisecondes
+    duration: 30 * 60 * 1000, // 30 minutes en millisecondes (pour reduire les appels API)
     enabled: true,
   },
 

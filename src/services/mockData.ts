@@ -2,6 +2,7 @@
 import { Artist, Venue, Concert } from '../types';
 
 export const mockArtists: Artist[] = [
+  // Artistes francais
   {
     id: 'artist-1',
     name: 'Phoenix',
@@ -121,6 +122,287 @@ export const mockArtists: Artist[] = [
     genres: ['Techno'],
     popularity: 75,
     description: 'DJ et productrice americaine basee a Paris.',
+  },
+  // Nouveaux artistes
+  {
+    id: 'artist-16',
+    name: 'Angele',
+    imageUrl: 'https://picsum.photos/seed/angele/400/400',
+    genres: ['Pop', 'R&B'],
+    popularity: 91,
+    description: 'Chanteuse et musicienne belge.',
+  },
+  {
+    id: 'artist-17',
+    name: 'Stromae',
+    imageUrl: 'https://picsum.photos/seed/stromae/400/400',
+    genres: ['Electronic', 'Hip-Hop'],
+    popularity: 93,
+    description: 'Auteur-compositeur-interprete belge.',
+  },
+  {
+    id: 'artist-18',
+    name: 'The Blaze',
+    imageUrl: 'https://picsum.photos/seed/blaze/400/400',
+    genres: ['Electronic', 'House'],
+    popularity: 80,
+    description: 'Duo francais de musique electronique.',
+  },
+  {
+    id: 'artist-19',
+    name: 'Vald',
+    imageUrl: 'https://picsum.photos/seed/vald/400/400',
+    genres: ['Hip-Hop', 'Rap'],
+    popularity: 84,
+    description: 'Rappeur francais.',
+  },
+  {
+    id: 'artist-20',
+    name: 'Nekfeu',
+    imageUrl: 'https://picsum.photos/seed/nekfeu/400/400',
+    genres: ['Hip-Hop', 'Rap'],
+    popularity: 86,
+    description: 'Rappeur francais membre de S-Crew et 1995.',
+  },
+  {
+    id: 'artist-21',
+    name: 'Hamza',
+    imageUrl: 'https://picsum.photos/seed/hamza/400/400',
+    genres: ['Hip-Hop', 'R&B'],
+    popularity: 79,
+    description: 'Rappeur et chanteur belge.',
+  },
+  {
+    id: 'artist-22',
+    name: 'Clara Luciani',
+    imageUrl: 'https://picsum.photos/seed/clara/400/400',
+    genres: ['Pop', 'Chanson'],
+    popularity: 83,
+    description: 'Auteure-compositrice-interprete francaise.',
+  },
+  {
+    id: 'artist-23',
+    name: 'Lomepal',
+    imageUrl: 'https://picsum.photos/seed/lomepal/400/400',
+    genres: ['Hip-Hop', 'Rap'],
+    popularity: 81,
+    description: 'Rappeur et skateur francais.',
+  },
+  {
+    id: 'artist-24',
+    name: 'Woodkid',
+    imageUrl: 'https://picsum.photos/seed/woodkid/400/400',
+    genres: ['Electronic', 'Orchestral'],
+    popularity: 77,
+    description: 'Compositeur et realisateur francais.',
+  },
+  {
+    id: 'artist-25',
+    name: 'Flavien Berger',
+    imageUrl: 'https://picsum.photos/seed/flavien/400/400',
+    genres: ['Electronic', 'Pop'],
+    popularity: 68,
+    description: 'Musicien et compositeur francais.',
+  },
+  {
+    id: 'artist-26',
+    name: 'Yseult',
+    imageUrl: 'https://picsum.photos/seed/yseult/400/400',
+    genres: ['R&B', 'Soul'],
+    popularity: 74,
+    description: 'Chanteuse francaise.',
+  },
+  {
+    id: 'artist-27',
+    name: 'Pomme',
+    imageUrl: 'https://picsum.photos/seed/pomme/400/400',
+    genres: ['Pop', 'Folk'],
+    popularity: 76,
+    description: 'Auteure-compositrice-interprete francaise.',
+  },
+  {
+    id: 'artist-28',
+    name: 'Ben Bohmer',
+    imageUrl: 'https://picsum.photos/seed/benbohmer/400/400',
+    genres: ['Electronic', 'Deep House'],
+    popularity: 73,
+    description: 'DJ et producteur allemand.',
+  },
+  {
+    id: 'artist-29',
+    name: 'Nina Kraviz',
+    imageUrl: 'https://picsum.photos/seed/nina/400/400',
+    genres: ['Techno'],
+    popularity: 84,
+    description: 'DJ et productrice russe.',
+  },
+  {
+    id: 'artist-30',
+    name: 'Jeff Mills',
+    imageUrl: 'https://picsum.photos/seed/jeffmills/400/400',
+    genres: ['Techno'],
+    popularity: 82,
+    description: 'DJ et producteur americain, pionnier de la techno de Detroit.',
+  },
+  {
+    id: 'artist-31',
+    name: 'Bicep',
+    imageUrl: 'https://picsum.photos/seed/bicep/400/400',
+    genres: ['Electronic', 'House'],
+    popularity: 79,
+    description: 'Duo de producteurs nord-irlandais.',
+  },
+  {
+    id: 'artist-32',
+    name: 'Moderat',
+    imageUrl: 'https://picsum.photos/seed/moderat/400/400',
+    genres: ['Electronic', 'IDM'],
+    popularity: 78,
+    description: 'Supergroupe allemand de musique electronique.',
+  },
+  {
+    id: 'artist-33',
+    name: 'Bonobo',
+    imageUrl: 'https://picsum.photos/seed/bonobo/400/400',
+    genres: ['Electronic', 'Downtempo'],
+    popularity: 80,
+    description: 'Musicien et producteur britannique.',
+  },
+  {
+    id: 'artist-34',
+    name: 'Jamie xx',
+    imageUrl: 'https://picsum.photos/seed/jamiexx/400/400',
+    genres: ['Electronic', 'House'],
+    popularity: 81,
+    description: 'Producteur britannique, membre de The xx.',
+  },
+  {
+    id: 'artist-35',
+    name: 'Four Tet',
+    imageUrl: 'https://picsum.photos/seed/fourtet/400/400',
+    genres: ['Electronic', 'IDM'],
+    popularity: 77,
+    description: 'Producteur britannique de musique electronique.',
+  },
+  {
+    id: 'artist-36',
+    name: 'Floating Points',
+    imageUrl: 'https://picsum.photos/seed/floating/400/400',
+    genres: ['Electronic', 'Jazz'],
+    popularity: 74,
+    description: 'DJ et producteur britannique.',
+  },
+  {
+    id: 'artist-37',
+    name: 'Roi Heenok',
+    imageUrl: 'https://picsum.photos/seed/heenok/400/400',
+    genres: ['Hip-Hop', 'Rap'],
+    popularity: 65,
+    description: 'Rappeur franco-congolais.',
+  },
+  {
+    id: 'artist-38',
+    name: 'Laylow',
+    imageUrl: 'https://picsum.photos/seed/laylow/400/400',
+    genres: ['Hip-Hop', 'R&B'],
+    popularity: 78,
+    description: 'Rappeur et producteur francais.',
+  },
+  {
+    id: 'artist-39',
+    name: 'SDM',
+    imageUrl: 'https://picsum.photos/seed/sdm/400/400',
+    genres: ['Hip-Hop', 'Rap'],
+    popularity: 76,
+    description: 'Rappeur francais.',
+  },
+  {
+    id: 'artist-40',
+    name: 'Josman',
+    imageUrl: 'https://picsum.photos/seed/josman/400/400',
+    genres: ['Hip-Hop', 'Rap'],
+    popularity: 77,
+    description: 'Rappeur francais.',
+  },
+  {
+    id: 'artist-41',
+    name: 'Izzy la Push',
+    imageUrl: 'https://picsum.photos/seed/izzy/400/400',
+    genres: ['Pop', 'R&B'],
+    popularity: 62,
+    description: 'Chanteur francais.',
+  },
+  {
+    id: 'artist-42',
+    name: 'Lous and the Yakuza',
+    imageUrl: 'https://picsum.photos/seed/lous/400/400',
+    genres: ['Pop', 'R&B'],
+    popularity: 73,
+    description: 'Chanteuse belgo-congolaise.',
+  },
+  {
+    id: 'artist-43',
+    name: 'Bon Entendeur',
+    imageUrl: 'https://picsum.photos/seed/bonentendeur/400/400',
+    genres: ['Electronic', 'House'],
+    popularity: 71,
+    description: 'Collectif francais de musique electronique.',
+  },
+  {
+    id: 'artist-44',
+    name: 'L\'Imperatrice',
+    imageUrl: 'https://picsum.photos/seed/imperatrice/400/400',
+    genres: ['Disco', 'Pop'],
+    popularity: 75,
+    description: 'Groupe francais de synth-pop.',
+  },
+  {
+    id: 'artist-45',
+    name: 'Tame Impala',
+    imageUrl: 'https://picsum.photos/seed/tameimpala/400/400',
+    genres: ['Rock', 'Psychedelic'],
+    popularity: 88,
+    description: 'Projet musical australien de Kevin Parker.',
+  },
+  {
+    id: 'artist-46',
+    name: 'Kungs',
+    imageUrl: 'https://picsum.photos/seed/kungs/400/400',
+    genres: ['Electronic', 'House'],
+    popularity: 79,
+    description: 'DJ et producteur francais.',
+  },
+  {
+    id: 'artist-47',
+    name: 'DJ Snake',
+    imageUrl: 'https://picsum.photos/seed/djsnake/400/400',
+    genres: ['Electronic', 'EDM'],
+    popularity: 89,
+    description: 'DJ et producteur francais.',
+  },
+  {
+    id: 'artist-48',
+    name: 'David Guetta',
+    imageUrl: 'https://picsum.photos/seed/guetta/400/400',
+    genres: ['Electronic', 'EDM'],
+    popularity: 94,
+    description: 'DJ et producteur francais.',
+  },
+  {
+    id: 'artist-49',
+    name: 'Petit Biscuit',
+    imageUrl: 'https://picsum.photos/seed/petitbiscuit/400/400',
+    genres: ['Electronic', 'Chill'],
+    popularity: 76,
+    description: 'Producteur francais de musique electronique.',
+  },
+  {
+    id: 'artist-50',
+    name: 'Sofiane Pamart',
+    imageUrl: 'https://picsum.photos/seed/sofiane/400/400',
+    genres: ['Classical', 'Piano'],
+    popularity: 72,
+    description: 'Pianiste et compositeur francais.',
   },
 ];
 
@@ -305,6 +587,124 @@ export const mockVenues: Venue[] = [
     capacity: 1500,
     imageUrl: 'https://picsum.photos/seed/wanderlust/600/400',
   },
+  {
+    id: 'venue-16',
+    name: 'Cabaret Sauvage',
+    address: '59 Boulevard MacDonald',
+    city: 'Paris',
+    postalCode: '75019',
+    arrondissement: '19e',
+    latitude: 48.8961,
+    longitude: 2.3891,
+    capacity: 1200,
+    imageUrl: 'https://picsum.photos/seed/cabaret/600/400',
+  },
+  {
+    id: 'venue-17',
+    name: 'Casino de Paris',
+    address: '16 Rue de Clichy',
+    city: 'Paris',
+    postalCode: '75009',
+    arrondissement: '9e',
+    latitude: 48.8788,
+    longitude: 2.3288,
+    capacity: 1600,
+    imageUrl: 'https://picsum.photos/seed/casino/600/400',
+  },
+  {
+    id: 'venue-18',
+    name: 'Salle Pleyel',
+    address: '252 Rue du Faubourg Saint-Honore',
+    city: 'Paris',
+    postalCode: '75008',
+    arrondissement: '8e',
+    latitude: 48.8769,
+    longitude: 2.3003,
+    capacity: 1913,
+    imageUrl: 'https://picsum.photos/seed/pleyel/600/400',
+  },
+  {
+    id: 'venue-19',
+    name: 'Philharmonie de Paris',
+    address: '221 Avenue Jean Jaures',
+    city: 'Paris',
+    postalCode: '75019',
+    arrondissement: '19e',
+    latitude: 48.8909,
+    longitude: 2.3941,
+    capacity: 2400,
+    imageUrl: 'https://picsum.photos/seed/philharmonie/600/400',
+  },
+  {
+    id: 'venue-20',
+    name: 'La Bellevilloise',
+    address: '19-21 Rue Boyer',
+    city: 'Paris',
+    postalCode: '75020',
+    arrondissement: '20e',
+    latitude: 48.8674,
+    longitude: 2.3896,
+    capacity: 800,
+    imageUrl: 'https://picsum.photos/seed/bellevilloise/600/400',
+  },
+  {
+    id: 'venue-21',
+    name: 'Le Trianon',
+    address: '80 Boulevard de Rochechouart',
+    city: 'Paris',
+    postalCode: '75018',
+    arrondissement: '18e',
+    latitude: 48.8829,
+    longitude: 2.3467,
+    capacity: 1100,
+    imageUrl: 'https://picsum.photos/seed/trianon/600/400',
+  },
+  {
+    id: 'venue-22',
+    name: 'La Gaite Lyrique',
+    address: '3 bis Rue Papin',
+    city: 'Paris',
+    postalCode: '75003',
+    arrondissement: '3e',
+    latitude: 48.8668,
+    longitude: 2.3543,
+    capacity: 700,
+    imageUrl: 'https://picsum.photos/seed/gaite/600/400',
+  },
+  {
+    id: 'venue-23',
+    name: 'New Morning',
+    address: '7-9 Rue des Petites Ecuries',
+    city: 'Paris',
+    postalCode: '75010',
+    arrondissement: '10e',
+    latitude: 48.8741,
+    longitude: 2.3502,
+    capacity: 500,
+    imageUrl: 'https://picsum.photos/seed/newmorning/600/400',
+  },
+  {
+    id: 'venue-24',
+    name: 'Stade de France',
+    address: '93216 Saint-Denis',
+    city: 'Saint-Denis',
+    postalCode: '93216',
+    latitude: 48.9244,
+    longitude: 2.3601,
+    capacity: 80698,
+    imageUrl: 'https://picsum.photos/seed/stadefrance/600/400',
+  },
+  {
+    id: 'venue-25',
+    name: 'La Defense Arena',
+    address: '99 Jardins de l\'Arche',
+    city: 'Nanterre',
+    postalCode: '92000',
+    latitude: 48.8956,
+    longitude: 2.2299,
+    capacity: 40000,
+    imageUrl: 'https://picsum.photos/seed/defensearena/600/400',
+  },
 ];
 
 // Helper pour generer des dates futures
@@ -314,258 +714,146 @@ const getFutureDate = (daysFromNow: number): string => {
   return date.toISOString().split('T')[0];
 };
 
-// Helper pour obtenir le prochain vendredi/samedi
-const getNextWeekendDay = (isSaturday: boolean): string => {
-  const today = new Date();
-  const dayOfWeek = today.getDay();
-  const targetDay = isSaturday ? 6 : 5;
-  const daysUntil = (targetDay - dayOfWeek + 7) % 7 || 7;
-  const date = new Date(today);
-  date.setDate(today.getDate() + daysUntil);
-  return date.toISOString().split('T')[0];
+// Generateur de concerts pour les 4 prochains mois
+const generateConcerts = (): Concert[] => {
+  const concerts: Concert[] = [];
+  const sources = ['bandsintown', 'ticketmaster', 'songkick', 'fnac', 'digitick'];
+  const startTimes = ['19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00', '23:00', '23:30'];
+  const technoStartTimes = ['23:00', '23:30', '00:00'];
+
+  // Configuration des concerts par type
+  const concertSchedule = [
+    // Concerts aujourd'hui
+    { days: 0, count: 5 },
+    // Concerts demain
+    { days: 1, count: 6 },
+    // Concerts J+2 a J+7
+    ...Array.from({ length: 6 }, (_, i) => ({ days: i + 2, count: 4 + Math.floor(Math.random() * 3) })),
+    // Semaine 2
+    ...Array.from({ length: 7 }, (_, i) => ({ days: i + 8, count: 3 + Math.floor(Math.random() * 4) })),
+    // Semaine 3
+    ...Array.from({ length: 7 }, (_, i) => ({ days: i + 15, count: 3 + Math.floor(Math.random() * 3) })),
+    // Semaine 4
+    ...Array.from({ length: 7 }, (_, i) => ({ days: i + 22, count: 2 + Math.floor(Math.random() * 4) })),
+    // Mois 2
+    ...Array.from({ length: 30 }, (_, i) => ({ days: i + 30, count: 2 + Math.floor(Math.random() * 3) })),
+    // Mois 3
+    ...Array.from({ length: 30 }, (_, i) => ({ days: i + 60, count: 1 + Math.floor(Math.random() * 3) })),
+    // Mois 4
+    ...Array.from({ length: 30 }, (_, i) => ({ days: i + 90, count: 1 + Math.floor(Math.random() * 2) })),
+  ];
+
+  let concertId = 1;
+  const usedCombinations = new Set<string>();
+
+  concertSchedule.forEach(({ days, count }) => {
+    for (let i = 0; i < count; i++) {
+      // Selection aleatoire d'un artiste et d'une venue qui n'ont pas deja ete utilises ce jour
+      let artistIndex: number;
+      let venueIndex: number;
+      let attempts = 0;
+
+      do {
+        artistIndex = Math.floor(Math.random() * mockArtists.length);
+        venueIndex = Math.floor(Math.random() * mockVenues.length);
+        attempts++;
+      } while (
+        usedCombinations.has(`${days}-${artistIndex}-${venueIndex}`) &&
+        attempts < 50
+      );
+
+      if (attempts >= 50) continue;
+
+      usedCombinations.add(`${days}-${artistIndex}-${venueIndex}`);
+
+      const artist = mockArtists[artistIndex];
+      const venue = mockVenues[venueIndex];
+      const isTechno = artist.genres.includes('Techno') || artist.genres.includes('House');
+      const isWeekend = new Date(getFutureDate(days)).getDay() >= 5 || new Date(getFutureDate(days)).getDay() === 0;
+
+      // Prix base sur la popularite de l'artiste et la capacite de la salle
+      const basePrice = Math.round(
+        10 + (artist.popularity || 70) * 0.5 + (venue.capacity || 500) * 0.002
+      );
+      const priceVariation = Math.round(basePrice * 0.4);
+
+      // Probabilite de sold out basee sur popularite et proximite
+      const soldOutProbability = days < 7
+        ? (artist.popularity || 70) / 200
+        : (artist.popularity || 70) / 500;
+
+      const concert: Concert = {
+        id: `concert-${concertId}`,
+        artist,
+        venue,
+        date: getFutureDate(days),
+        startTime: isTechno && isWeekend
+          ? technoStartTimes[Math.floor(Math.random() * technoStartTimes.length)]
+          : startTimes[Math.floor(Math.random() * startTimes.length)],
+        price: {
+          min: basePrice,
+          max: basePrice + priceVariation,
+          currency: 'EUR',
+        },
+        ticketUrl: `https://example.com/tickets/${concertId}`,
+        source: sources[Math.floor(Math.random() * sources.length)],
+        sourceId: `src-${concertId}`,
+        genre: artist.genres[0],
+        isSoldOut: Math.random() < soldOutProbability,
+        imageUrl: `https://picsum.photos/seed/concert${concertId}/800/400`,
+      };
+
+      // Ajoute heure de fin pour les soirees techno
+      if (isTechno && isWeekend) {
+        concert.endTime = '06:00';
+      }
+
+      // Quelques concerts gratuits
+      if (Math.random() < 0.05) {
+        concert.price = { min: 0, max: 0, currency: 'EUR' };
+        concert.description = 'Entree libre';
+      }
+
+      concerts.push(concert);
+      concertId++;
+    }
+  });
+
+  // Ajoute des dates supplementaires pour les artistes populaires
+  const popularArtists = mockArtists.filter(a => (a.popularity || 0) >= 85);
+  popularArtists.forEach(artist => {
+    const additionalDates = [30, 45, 60, 75, 90].filter(() => Math.random() > 0.5);
+    additionalDates.forEach(days => {
+      const venueIndex = Math.floor(Math.random() * 5); // Grandes salles uniquement
+      const venue = mockVenues[venueIndex];
+      const basePrice = Math.round(40 + (artist.popularity || 70) * 0.6);
+
+      concerts.push({
+        id: `concert-${concertId}`,
+        artist,
+        venue,
+        date: getFutureDate(days),
+        startTime: '20:00',
+        price: {
+          min: basePrice,
+          max: basePrice + 40,
+          currency: 'EUR',
+        },
+        ticketUrl: `https://example.com/tickets/${concertId}`,
+        source: 'ticketmaster',
+        sourceId: `src-${concertId}`,
+        genre: artist.genres[0],
+        isSoldOut: Math.random() < 0.3,
+        imageUrl: `https://picsum.photos/seed/concert${concertId}/800/400`,
+      });
+      concertId++;
+    });
+  });
+
+  // Trie par date
+  return concerts.sort((a, b) =>
+    new Date(a.date).getTime() - new Date(b.date).getTime()
+  );
 };
 
-export const mockConcerts: Concert[] = [
-  // Concerts ce soir
-  {
-    id: 'concert-1',
-    artist: mockArtists[2], // Justice
-    venue: mockVenues[1], // Zenith
-    date: getFutureDate(0),
-    startTime: '20:00',
-    price: { min: 45, max: 65, currency: 'EUR' },
-    ticketUrl: 'https://example.com/tickets/1',
-    source: 'bandsintown',
-    sourceId: 'bit-456',
-    genre: 'Electronic',
-    isSoldOut: false,
-    imageUrl: 'https://picsum.photos/seed/concert1/800/400',
-  },
-  {
-    id: 'concert-2',
-    artist: mockArtists[8], // Amelie Lens
-    venue: mockVenues[8], // Rex Club
-    date: getFutureDate(0),
-    startTime: '23:30',
-    price: { min: 20, max: 25, currency: 'EUR' },
-    ticketUrl: 'https://example.com/tickets/2',
-    source: 'bandsintown',
-    sourceId: 'bit-457',
-    genre: 'Techno',
-    isSoldOut: false,
-    imageUrl: 'https://picsum.photos/seed/concert2/800/400',
-  },
-
-  // Demain
-  {
-    id: 'concert-3',
-    artist: mockArtists[5], // Aya Nakamura
-    venue: mockVenues[4], // Accor Arena
-    date: getFutureDate(1),
-    startTime: '20:00',
-    price: { min: 55, max: 120, currency: 'EUR' },
-    ticketUrl: 'https://example.com/tickets/3',
-    source: 'ticketmaster',
-    sourceId: 'tm-123',
-    genre: 'Pop',
-    isSoldOut: false,
-    imageUrl: 'https://picsum.photos/seed/concert3/800/400',
-  },
-  {
-    id: 'concert-4',
-    artist: mockArtists[10], // Folamour
-    venue: mockVenues[10], // Badaboum
-    date: getFutureDate(1),
-    startTime: '23:00',
-    price: { min: 15, max: 18, currency: 'EUR' },
-    ticketUrl: 'https://example.com/tickets/4',
-    source: 'bandsintown',
-    sourceId: 'bit-458',
-    genre: 'House',
-    isSoldOut: false,
-    imageUrl: 'https://picsum.photos/seed/concert4/800/400',
-  },
-
-  // Ce week-end (Vendredi)
-  {
-    id: 'concert-5',
-    artist: mockArtists[9], // Charlotte de Witte
-    venue: mockVenues[9], // Concrete
-    date: getNextWeekendDay(false),
-    startTime: '23:59',
-    endTime: '07:00',
-    price: { min: 25, max: 30, currency: 'EUR' },
-    ticketUrl: 'https://example.com/tickets/5',
-    source: 'bandsintown',
-    sourceId: 'bit-459',
-    genre: 'Techno',
-    isSoldOut: false,
-    imageUrl: 'https://picsum.photos/seed/concert5/800/400',
-  },
-  {
-    id: 'concert-6',
-    artist: mockArtists[0], // Phoenix
-    venue: mockVenues[0], // Olympia
-    date: getNextWeekendDay(false),
-    startTime: '20:30',
-    price: { min: 45, max: 75, currency: 'EUR' },
-    ticketUrl: 'https://example.com/tickets/6',
-    source: 'ticketmaster',
-    sourceId: 'tm-124',
-    genre: 'Rock',
-    isSoldOut: false,
-    imageUrl: 'https://picsum.photos/seed/concert6/800/400',
-  },
-
-  // Ce week-end (Samedi)
-  {
-    id: 'concert-7',
-    artist: mockArtists[13], // Polo & Pan
-    venue: mockVenues[11], // Glazart
-    date: getNextWeekendDay(true),
-    startTime: '22:00',
-    price: { min: 28, max: 35, currency: 'EUR' },
-    ticketUrl: 'https://example.com/tickets/7',
-    source: 'bandsintown',
-    sourceId: 'bit-460',
-    genre: 'Electronic',
-    isSoldOut: false,
-    imageUrl: 'https://picsum.photos/seed/concert7/800/400',
-  },
-  {
-    id: 'concert-8',
-    artist: mockArtists[7], // Orelsan
-    venue: mockVenues[4], // Accor Arena
-    date: getNextWeekendDay(true),
-    startTime: '20:00',
-    price: { min: 50, max: 95, currency: 'EUR' },
-    ticketUrl: 'https://example.com/tickets/8',
-    source: 'ticketmaster',
-    sourceId: 'tm-125',
-    genre: 'Hip-Hop',
-    isSoldOut: true,
-    imageUrl: 'https://picsum.photos/seed/concert8/800/400',
-  },
-  {
-    id: 'concert-9',
-    artist: mockArtists[14], // Louisahhh
-    venue: mockVenues[13], // La Machine
-    date: getNextWeekendDay(true),
-    startTime: '23:30',
-    endTime: '06:00',
-    price: { min: 18, max: 22, currency: 'EUR' },
-    ticketUrl: 'https://example.com/tickets/9',
-    source: 'bandsintown',
-    sourceId: 'bit-461',
-    genre: 'Techno',
-    isSoldOut: false,
-    imageUrl: 'https://picsum.photos/seed/concert9/800/400',
-  },
-
-  // Cette semaine
-  {
-    id: 'concert-10',
-    artist: mockArtists[6], // Parcels
-    venue: mockVenues[2], // La Cigale
-    date: getFutureDate(3),
-    startTime: '20:30',
-    price: { min: 35, max: 45, currency: 'EUR' },
-    ticketUrl: 'https://example.com/tickets/10',
-    source: 'songkick',
-    sourceId: 'sk-123',
-    genre: 'Disco',
-    isSoldOut: false,
-    imageUrl: 'https://picsum.photos/seed/concert10/800/400',
-  },
-  {
-    id: 'concert-11',
-    artist: mockArtists[1], // Christine and the Queens
-    venue: mockVenues[3], // Bataclan
-    date: getFutureDate(4),
-    startTime: '20:00',
-    price: { min: 38, max: 55, currency: 'EUR' },
-    ticketUrl: 'https://example.com/tickets/11',
-    source: 'ticketmaster',
-    sourceId: 'tm-126',
-    genre: 'Pop',
-    isSoldOut: false,
-    imageUrl: 'https://picsum.photos/seed/concert11/800/400',
-  },
-  {
-    id: 'concert-12',
-    artist: mockArtists[11], // Myd
-    venue: mockVenues[12], // Le Petit Bain
-    date: getFutureDate(5),
-    startTime: '21:00',
-    price: { min: 18, max: 22, currency: 'EUR' },
-    ticketUrl: 'https://example.com/tickets/12',
-    source: 'bandsintown',
-    sourceId: 'bit-462',
-    genre: 'House',
-    isSoldOut: false,
-    imageUrl: 'https://picsum.photos/seed/concert12/800/400',
-  },
-
-  // Evenement gratuit
-  {
-    id: 'concert-13',
-    artist: mockArtists[12], // Vladimir Cauchemar
-    venue: mockVenues[14], // Wanderlust
-    date: getFutureDate(6),
-    startTime: '18:00',
-    price: { min: 0, max: 0, currency: 'EUR' },
-    ticketUrl: 'https://example.com/tickets/13',
-    source: 'bandsintown',
-    sourceId: 'bit-463',
-    genre: 'Electronic',
-    isSoldOut: false,
-    imageUrl: 'https://picsum.photos/seed/concert13/800/400',
-    description: 'Entree libre - Sunset session',
-  },
-
-  // Plus tard ce mois
-  {
-    id: 'concert-14',
-    artist: mockArtists[4], // Arctic Monkeys
-    venue: mockVenues[4], // Accor Arena
-    date: getFutureDate(15),
-    startTime: '20:00',
-    price: { min: 65, max: 140, currency: 'EUR' },
-    ticketUrl: 'https://example.com/tickets/14',
-    source: 'ticketmaster',
-    sourceId: 'tm-127',
-    genre: 'Rock',
-    isSoldOut: true,
-    imageUrl: 'https://picsum.photos/seed/concert14/800/400',
-  },
-  {
-    id: 'concert-15',
-    artist: mockArtists[3], // Disclosure
-    venue: mockVenues[1], // Zenith
-    date: getFutureDate(20),
-    startTime: '20:30',
-    price: { min: 42, max: 68, currency: 'EUR' },
-    ticketUrl: 'https://example.com/tickets/15',
-    source: 'songkick',
-    sourceId: 'sk-124',
-    genre: 'Electronic',
-    isSoldOut: false,
-    imageUrl: 'https://picsum.photos/seed/concert15/800/400',
-  },
-
-  // Autre date Phoenix
-  {
-    id: 'concert-16',
-    artist: mockArtists[0], // Phoenix
-    venue: mockVenues[0], // Olympia
-    date: getFutureDate(22),
-    startTime: '20:30',
-    price: { min: 45, max: 75, currency: 'EUR' },
-    ticketUrl: 'https://example.com/tickets/16',
-    source: 'ticketmaster',
-    sourceId: 'tm-128',
-    genre: 'Rock',
-    isSoldOut: false,
-    imageUrl: 'https://picsum.photos/seed/concert16/800/400',
-  },
-];
+export const mockConcerts: Concert[] = generateConcerts();

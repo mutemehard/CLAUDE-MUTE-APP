@@ -6,9 +6,9 @@ import { openagendaApi } from './api/openagenda';
 import { scrapeAllEvents, mergeScrapedConcerts } from './scrapers';
 
 // Configuration
-const USE_REAL_API = false; // Passer a true quand les cles API sont configurees
+const USE_REAL_API = true; // Active pour fetcher les vrais concerts
 const USE_SCRAPERS = true; // Utilise les scrapers pour plus de donnees
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes pour reduire les appels API
 
 // Cache simple en memoire
 interface CacheEntry<T> {
