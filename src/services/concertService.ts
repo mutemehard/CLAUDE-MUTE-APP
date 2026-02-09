@@ -1,13 +1,13 @@
-// Service pour gerer les donnees de concerts avec support API et cache
-// Utilise uniquement les APIs reelles (Bandsintown) - pas de faux concerts
+// Service pour gerer les donnees de concerts avec support multi-API
+// Sources: Bandsintown, Ticketmaster, OpenAgenda
 import { Concert, ConcertFilters, Artist, Venue } from '../types';
 import { bandsintownApi } from './api/bandsintown';
+import { ticketmasterApi } from './api/ticketmaster';
 import { openagendaApi } from './api/openagenda';
+import { API_CONFIG } from '../config/api';
 
 // Configuration
-const USE_REAL_API = true; // Active pour fetcher les vrais concerts
-const USE_SCRAPERS = true; // Utilise les scrapers pour plus de donnees
-const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes pour reduire les appels API
+const CACHE_DURATION = API_CONFIG.cache.duration;
 
 // Cache simple en memoire
 interface CacheEntry<T> {
@@ -185,83 +185,111 @@ const POPULAR_ARTISTS = [
 // API publique du service
 export const concertService = {
   // Récupère tous les concerts (avec cache)
-  // Utilise uniquement les APIs reelles (Bandsintown) - pas de faux concerts
+  // Sources: Ticketmaster, Bandsintown, OpenAgenda
   async getAllConcerts(): Promise<Concert[]> {
     const cacheKey = 'all_concerts';
     const cached = cache.get<Concert[]>(cacheKey);
-    if (cached) return cached;
-
-    let concerts: Concert[] = [];
-    const concertSources: Concert[][] = [];
-
-    // Fetch depuis les APIs reelles
-    if (USE_REAL_API) {
-      try {
-        const apiConcerts = await this.fetchFromApis();
-        if (apiConcerts.length > 0) {
-          concertSources.push(apiConcerts);
-        }
-      } catch (error) {
-        console.error('Error fetching from APIs:', error);
-      }
+    if (cached) {
+      console.log(`[MUTE] Returning ${cached.length} cached concerts`);
+      return cached;
     }
 
-    // Les scrapers sont desactives car ils utilisent des donnees simulees
-    // TODO: Reactiver quand on aura de vrais scrapers
-    // if (USE_SCRAPERS) { ... }
+    try {
+      const concerts = await this.fetchFromApis();
 
-    // Merge toutes les sources
-    concerts = mergeConcerts(concertSources);
-
-    // Plus de fallback sur les mocks - on ne montre que les vrais concerts
-    const sorted = concerts.sort((a, b) =>
-      new Date(a.date).getTime() - new Date(b.date).getTime()
-    );
-
-    cache.set(cacheKey, sorted);
-    return sorted;
-  },
-
-  // Fetch depuis les vraies APIs
-  async fetchFromApis(): Promise<Concert[]> {
-    const allConcerts: Concert[][] = [];
-    const batchSize = 10; // Nombre de requetes en parallele
-
-    // Bandsintown - recherche par artistes populaires en batches
-    for (let i = 0; i < POPULAR_ARTISTS.length; i += batchSize) {
-      const batch = POPULAR_ARTISTS.slice(i, i + batchSize);
-      const batchPromises = batch.map(artistName =>
-        bandsintownApi.getArtistEventsInParis(artistName)
-          .catch(err => {
-            // Silently fail for individual artists
-            return [];
-          })
+      // Trie par date
+      const sorted = concerts.sort((a, b) =>
+        new Date(a.date).getTime() - new Date(b.date).getTime()
       );
 
+      // Cache les resultats
+      if (sorted.length > 0) {
+        cache.set(cacheKey, sorted);
+      }
+
+      return sorted;
+    } catch (error) {
+      console.error('[MUTE] Error fetching concerts:', error);
+      return [];
+    }
+  },
+
+  // Fetch depuis toutes les APIs configurees
+  async fetchFromApis(): Promise<Concert[]> {
+    const allConcerts: Concert[][] = [];
+    const errors: string[] = [];
+
+    console.log('[MUTE] Fetching concerts from APIs...');
+
+    // 1. Ticketmaster - meilleure source pour les concerts (si cle configuree)
+    if (API_CONFIG.ticketmaster?.enabled && API_CONFIG.ticketmaster?.apiKey) {
       try {
-        const batchResults = await Promise.all(batchPromises);
-        allConcerts.push(...batchResults);
+        console.log('[MUTE] Fetching from Ticketmaster...');
+        const tmConcerts = await ticketmasterApi.getConcertsInParis({ size: 200 });
+        if (tmConcerts.length > 0) {
+          allConcerts.push(tmConcerts);
+          console.log(`[MUTE] Ticketmaster: ${tmConcerts.length} concerts found`);
+        }
       } catch (error) {
-        console.warn('Bandsintown batch error:', error);
-      }
-
-      // Petit delai entre les batches pour eviter le rate limiting
-      if (i + batchSize < POPULAR_ARTISTS.length) {
-        await delay(200);
+        errors.push('Ticketmaster API error');
+        console.warn('[MUTE] Ticketmaster error:', error);
       }
     }
 
-    // OpenAgenda - concerts a Paris (si configure)
-    try {
-      const openAgendaConcerts = await openagendaApi.getWeekEvents();
-      if (openAgendaConcerts.length > 0) {
-        allConcerts.push(openAgendaConcerts);
+    // 2. Bandsintown - recherche par artistes populaires
+    if (API_CONFIG.bandsintown?.enabled) {
+      const batchSize = 10;
+      let bandsintownTotal = 0;
+
+      console.log('[MUTE] Fetching from Bandsintown...');
+
+      for (let i = 0; i < POPULAR_ARTISTS.length; i += batchSize) {
+        const batch = POPULAR_ARTISTS.slice(i, i + batchSize);
+        const batchPromises = batch.map(artistName =>
+          bandsintownApi.getArtistEventsInParis(artistName)
+            .catch(() => [])
+        );
+
+        try {
+          const batchResults = await Promise.all(batchPromises);
+          const validResults = batchResults.filter(r => r.length > 0);
+          allConcerts.push(...validResults);
+          bandsintownTotal += validResults.reduce((sum, r) => sum + r.length, 0);
+        } catch (error) {
+          console.warn('[MUTE] Bandsintown batch error:', error);
+        }
+
+        // Rate limiting
+        if (i + batchSize < POPULAR_ARTISTS.length) {
+          await delay(150);
+        }
       }
-    } catch (err) {
-      // OpenAgenda optionnel
+
+      console.log(`[MUTE] Bandsintown: ${bandsintownTotal} concerts found`);
     }
 
-    return mergeConcerts(allConcerts);
+    // 3. OpenAgenda - evenements locaux (si configure)
+    if (API_CONFIG.openagenda?.enabled && API_CONFIG.openagenda?.apiKey) {
+      try {
+        console.log('[MUTE] Fetching from OpenAgenda...');
+        const oaConcerts = await openagendaApi.getWeekEvents();
+        if (oaConcerts.length > 0) {
+          allConcerts.push(oaConcerts);
+          console.log(`[MUTE] OpenAgenda: ${oaConcerts.length} concerts found`);
+        }
+      } catch (error) {
+        errors.push('OpenAgenda API error');
+      }
+    }
+
+    const merged = mergeConcerts(allConcerts);
+    console.log(`[MUTE] Total unique concerts: ${merged.length}`);
+
+    if (errors.length > 0) {
+      console.warn('[MUTE] API errors:', errors.join(', '));
+    }
+
+    return merged;
   },
 
   // Récupère les concerts avec filtres
@@ -363,20 +391,40 @@ export const concertService = {
     return concerts.find(c => c.id === id) || null;
   },
 
-  // Recherche de concerts par texte
-  // Utilise uniquement l'API Bandsintown pour des resultats reels
+  // Recherche de concerts par texte (multi-API)
   async searchConcerts(query: string): Promise<Concert[]> {
-    // Recherche sur Bandsintown
-    if (USE_REAL_API) {
+    const results: Concert[][] = [];
+
+    // Recherche sur Ticketmaster
+    if (API_CONFIG.ticketmaster?.enabled && API_CONFIG.ticketmaster?.apiKey) {
       try {
-        const apiResults = await bandsintownApi.getArtistEventsInParis(query);
-        return apiResults;
+        const tmResults = await ticketmasterApi.searchByArtist(query);
+        if (tmResults.length > 0) {
+          results.push(tmResults);
+        }
       } catch (error) {
-        console.warn('Search API error:', error);
+        console.warn('[MUTE] Ticketmaster search error:', error);
       }
     }
 
-    // Recherche dans les concerts deja caches
+    // Recherche sur Bandsintown
+    if (API_CONFIG.bandsintown?.enabled) {
+      try {
+        const bitResults = await bandsintownApi.getArtistEventsInParis(query);
+        if (bitResults.length > 0) {
+          results.push(bitResults);
+        }
+      } catch (error) {
+        console.warn('[MUTE] Bandsintown search error:', error);
+      }
+    }
+
+    // Si resultats API, retourne les resultats fusionnes
+    if (results.length > 0) {
+      return mergeConcerts(results);
+    }
+
+    // Sinon recherche dans le cache local
     const allConcerts = await this.getAllConcerts();
     const lowerQuery = query.toLowerCase();
     return allConcerts.filter(c =>
