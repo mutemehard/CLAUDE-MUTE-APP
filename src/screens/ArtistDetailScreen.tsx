@@ -8,13 +8,14 @@ import {
   Image,
   SafeAreaView,
   Linking,
-  FlatList,
+  Alert,
 } from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ConcertCard } from '../components/ConcertCard';
 import { useStore } from '../hooks';
 import { artistService, concertService } from '../services';
+import { shareArtist } from '../utils';
 import { colors, spacing, typography, borderRadius } from '../constants';
 import { RootStackParamList, Artist, Concert } from '../types';
 
@@ -67,6 +68,14 @@ export const ArtistDetailScreen: React.FC = () => {
     }
   };
 
+  const handleShare = async () => {
+    if (!artist) return;
+    const result = await shareArtist(artist);
+    if (!result.success && result.error) {
+      Alert.alert('Erreur', result.error);
+    }
+  };
+
   const handleConcertPress = (concert: Concert) => {
     navigation.navigate('ConcertDetail', { concertId: concert.id });
   };
@@ -113,13 +122,15 @@ export const ArtistDetailScreen: React.FC = () => {
             <Text style={styles.backIcon}>←</Text>
           </TouchableOpacity>
 
-          {/* Favorite button */}
-          <TouchableOpacity
-            style={styles.favoriteHeaderButton}
-            onPress={handleFavorite}
-          >
-            <Text style={styles.favoriteHeaderIcon}>{favorite ? '❤️' : '🤍'}</Text>
-          </TouchableOpacity>
+          {/* Header actions */}
+          <View style={styles.headerActions}>
+            <TouchableOpacity style={styles.headerActionButton} onPress={handleShare}>
+              <Text style={styles.headerActionIcon}>📤</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.headerActionButton} onPress={handleFavorite}>
+              <Text style={styles.headerActionIcon}>{favorite ? '❤️' : '🤍'}</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Content */}
@@ -290,10 +301,14 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontSize: 24,
   },
-  favoriteHeaderButton: {
+  headerActions: {
     position: 'absolute',
     top: spacing.md,
     right: spacing.md,
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  headerActionButton: {
     width: 40,
     height: 40,
     backgroundColor: 'rgba(0,0,0,0.5)',
@@ -301,8 +316,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  favoriteHeaderIcon: {
-    fontSize: 20,
+  headerActionIcon: {
+    fontSize: 18,
   },
   content: {
     padding: spacing.md,
