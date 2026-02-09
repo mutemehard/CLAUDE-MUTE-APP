@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, typography, borderRadius, APP_CONFIG, MUSIC_GENRES } from '../constants';
 import { AttendedConcert, RootStackParamList } from '../types';
 import { useStore } from '../hooks';
+import { haptics } from '../utils';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -80,6 +81,7 @@ export const ProfileScreen: React.FC = () => {
   const attendedConcerts = storeAttendedConcerts.length > 0 ? storeAttendedConcerts : mockAttendedConcerts;
 
   const toggleGenre = (genre: string) => {
+    haptics.selection();
     setSelectedGenres(prev =>
       prev.includes(genre)
         ? prev.filter(g => g !== genre)
@@ -87,8 +89,8 @@ export const ProfileScreen: React.FC = () => {
     );
   };
 
-  // Calcul des stats
-  const getStats = () => {
+  // Calcul des stats avec useMemo pour optimisation
+  const stats = useMemo(() => {
     const totalConcerts = attendedConcerts.length;
 
     // Artiste le plus vu
@@ -116,19 +118,48 @@ export const ProfileScreen: React.FC = () => {
       ? new Date().getFullYear() - new Date(firstConcert.date).getFullYear()
       : 0;
 
+    // Note moyenne
+    const concertsWithRating = attendedConcerts.filter(c => c.rating);
+    const averageRating = concertsWithRating.length > 0
+      ? concertsWithRating.reduce((sum, c) => sum + (c.rating || 0), 0) / concertsWithRating.length
+      : 0;
+
+    // Mois le plus actif
+    const monthCounts: Record<string, number> = {};
+    const monthNames = ['Jan', 'Fev', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aou', 'Sep', 'Oct', 'Nov', 'Dec'];
+    attendedConcerts.forEach(c => {
+      const month = new Date(c.date).getMonth();
+      monthCounts[monthNames[month]] = (monthCounts[monthNames[month]] || 0) + 1;
+    });
+    const topMonth = Object.entries(monthCounts).sort((a, b) => b[1] - a[1])[0];
+
+    // Dernier concert
+    const lastConcert = sortedByDate[sortedByDate.length - 1];
+
+    // Concerts cette annee
+    const currentYear = new Date().getFullYear();
+    const concertsThisYear = attendedConcerts.filter(
+      c => new Date(c.date).getFullYear() === currentYear
+    ).length;
+
     return {
       totalConcerts,
       topArtist: topArtist ? { name: topArtist[0], count: topArtist[1] } : null,
       topVenue: topVenue ? { name: topVenue[0], count: topVenue[1] } : null,
       yearsActive,
       uniqueArtists: Object.keys(artistCounts).length,
+      uniqueVenues: Object.keys(venueCounts).length,
+      averageRating: Math.round(averageRating * 10) / 10,
+      topMonth: topMonth ? { name: topMonth[0], count: topMonth[1] } : null,
+      firstConcert,
+      lastConcert,
+      concertsThisYear,
     };
-  };
-
-  const stats = getStats();
+  }, [attendedConcerts]);
 
   const handleAddConcert = () => {
     if (!newConcert.artist || !newConcert.venue || !newConcert.date) {
+      haptics.error();
       Alert.alert('Erreur', 'Remplis tous les champs');
       return;
     }
@@ -142,12 +173,14 @@ export const ProfileScreen: React.FC = () => {
       rating: newConcert.rating > 0 ? newConcert.rating : undefined,
     };
 
+    haptics.success();
     addAttendedConcert(concert);
     setNewConcert({ artist: '', venue: '', date: '', rating: 0 });
     setShowAddModal(false);
   };
 
   const handleDeleteConcert = (concertId: string, artistName: string) => {
+    haptics.warning();
     Alert.alert(
       'Supprimer',
       `Retirer ${artistName} de ton historique ?`,
@@ -156,13 +189,17 @@ export const ProfileScreen: React.FC = () => {
         {
           text: 'Supprimer',
           style: 'destructive',
-          onPress: () => removeAttendedConcert(concertId),
+          onPress: () => {
+            haptics.medium();
+            removeAttendedConcert(concertId);
+          },
         },
       ]
     );
   };
 
   const handleRateConcert = (concertId: string, rating: number) => {
+    haptics.light();
     updateAttendedConcert(concertId, { rating });
   };
 
@@ -219,33 +256,80 @@ export const ProfileScreen: React.FC = () => {
             </View>
             <View style={styles.statDivider} />
             <View style={styles.secondaryStat}>
+              <Text style={styles.secondaryStatNumber}>{stats.uniqueVenues}</Text>
+              <Text style={styles.secondaryStatLabel}>salles</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.secondaryStat}>
               <Text style={styles.secondaryStatNumber}>{stats.yearsActive}</Text>
               <Text style={styles.secondaryStatLabel}>ans</Text>
             </View>
           </View>
+
+          {/* Stats annee en cours */}
+          {stats.concertsThisYear > 0 && (
+            <View style={styles.yearlyStats}>
+              <Text style={styles.yearlyStatsText}>
+                {stats.concertsThisYear} concert{stats.concertsThisYear > 1 ? 's' : ''} en {new Date().getFullYear()}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Highlights */}
         {stats.topArtist && (
           <View style={styles.highlightsSection}>
-            <View style={styles.highlight}>
-              <Text style={styles.highlightIcon}>🏆</Text>
-              <View style={styles.highlightContent}>
+            <View style={styles.highlightsRow}>
+              <View style={[styles.highlight, styles.highlightHalf]}>
+                <Text style={styles.highlightIconCentered}>🏆</Text>
                 <Text style={styles.highlightLabel}>Artiste prefere</Text>
-                <Text style={styles.highlightValue}>
-                  {stats.topArtist.name} ({stats.topArtist.count}x)
+                <Text style={styles.highlightValue} numberOfLines={1}>
+                  {stats.topArtist.name}
                 </Text>
+                <Text style={styles.highlightCount}>{stats.topArtist.count}x</Text>
               </View>
+
+              {stats.topVenue && (
+                <View style={[styles.highlight, styles.highlightHalf]}>
+                  <Text style={styles.highlightIconCentered}>📍</Text>
+                  <Text style={styles.highlightLabel}>Salle favorite</Text>
+                  <Text style={styles.highlightValue} numberOfLines={1}>
+                    {stats.topVenue.name}
+                  </Text>
+                  <Text style={styles.highlightCount}>{stats.topVenue.count}x</Text>
+                </View>
+              )}
             </View>
 
-            {stats.topVenue && (
+            <View style={styles.highlightsRow}>
+              {stats.topMonth && (
+                <View style={[styles.highlight, styles.highlightHalf]}>
+                  <Text style={styles.highlightIconCentered}>📅</Text>
+                  <Text style={styles.highlightLabel}>Mois prefere</Text>
+                  <Text style={styles.highlightValue}>{stats.topMonth.name}</Text>
+                  <Text style={styles.highlightCount}>{stats.topMonth.count} concerts</Text>
+                </View>
+              )}
+
+              {stats.averageRating > 0 && (
+                <View style={[styles.highlight, styles.highlightHalf]}>
+                  <Text style={styles.highlightIconCentered}>⭐</Text>
+                  <Text style={styles.highlightLabel}>Note moyenne</Text>
+                  <Text style={styles.highlightValue}>{stats.averageRating}/5</Text>
+                  <Text style={styles.highlightCount}>sur tous tes concerts</Text>
+                </View>
+              )}
+            </View>
+
+            {stats.firstConcert && (
               <View style={styles.highlight}>
-                <Text style={styles.highlightIcon}>📍</Text>
+                <Text style={styles.highlightIcon}>🎤</Text>
                 <View style={styles.highlightContent}>
-                  <Text style={styles.highlightLabel}>Salle favorite</Text>
+                  <Text style={styles.highlightLabel}>Premier concert enregistre</Text>
                   <Text style={styles.highlightValue}>
-                    {stats.topVenue.name} ({stats.topVenue.count}x)
+                    {stats.firstConcert.artistName} @ {stats.firstConcert.venueName}
                   </Text>
+                  <Text style={styles.highlightCount}>{formatDate(stats.firstConcert.date)}</Text>
                 </View>
               </View>
             )}
@@ -525,9 +609,25 @@ const styles = StyleSheet.create({
     height: 30,
     backgroundColor: colors.border,
   },
+  yearlyStats: {
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.surfaceLight,
+  },
+  yearlyStatsText: {
+    ...typography.caption,
+    color: colors.secondary,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
   highlightsSection: {
     marginHorizontal: spacing.lg,
     marginBottom: spacing.md,
+    gap: spacing.sm,
+  },
+  highlightsRow: {
+    flexDirection: 'row',
     gap: spacing.sm,
   },
   highlight: {
@@ -537,9 +637,18 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.lg,
     padding: spacing.md,
   },
+  highlightHalf: {
+    flex: 1,
+    flexDirection: 'column',
+    alignItems: 'center',
+  },
   highlightIcon: {
     fontSize: 24,
     marginRight: spacing.md,
+  },
+  highlightIconCentered: {
+    fontSize: 28,
+    marginBottom: spacing.xs,
   },
   highlightContent: {
     flex: 1,
@@ -547,11 +656,19 @@ const styles = StyleSheet.create({
   highlightLabel: {
     ...typography.caption,
     color: colors.textMuted,
+    textAlign: 'center',
   },
   highlightValue: {
     ...typography.body,
     color: colors.textPrimary,
     fontWeight: '600',
+    textAlign: 'center',
+  },
+  highlightCount: {
+    ...typography.caption,
+    color: colors.secondary,
+    textAlign: 'center',
+    marginTop: 2,
   },
   section: {
     marginTop: spacing.lg,

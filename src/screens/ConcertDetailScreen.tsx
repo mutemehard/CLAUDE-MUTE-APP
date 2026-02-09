@@ -14,7 +14,7 @@ import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useStore } from '../hooks';
 import { concertService, notificationService, calendarService } from '../services';
-import { shareConcert } from '../utils';
+import { shareConcert, haptics } from '../utils';
 import { colors, spacing, typography, borderRadius } from '../constants';
 import { RootStackParamList, Concert } from '../types';
 
@@ -100,6 +100,7 @@ export const ConcertDetailScreen: React.FC = () => {
 
   const handleFavorite = () => {
     if (!concert) return;
+    haptics.medium();
     if (isFavorite('concert', concert.id)) {
       removeFavorite('concert', concert.id);
     } else {
@@ -109,6 +110,7 @@ export const ConcertDetailScreen: React.FC = () => {
 
   const handleBuyTickets = async () => {
     if (concert?.ticketUrl) {
+      haptics.light();
       const supported = await Linking.canOpenURL(concert.ticketUrl);
       if (supported) {
         await Linking.openURL(concert.ticketUrl);
@@ -129,6 +131,7 @@ export const ConcertDetailScreen: React.FC = () => {
 
     try {
       await notificationService.scheduleReminderNotification(concert, 1);
+      haptics.success();
       setReminderSet(true);
       Alert.alert(
         'Rappel active',
@@ -136,6 +139,7 @@ export const ConcertDetailScreen: React.FC = () => {
         [{ text: 'OK' }]
       );
     } catch (error) {
+      haptics.error();
       Alert.alert(
         'Erreur',
         'Impossible d\'activer le rappel. Verifie tes parametres de notifications.',
@@ -150,6 +154,7 @@ export const ConcertDetailScreen: React.FC = () => {
     try {
       const result = await calendarService.addConcert(concert);
       if (result.success) {
+        haptics.success();
         setCalendarAdded(true);
         Alert.alert(
           'Ajoute au calendrier',
@@ -157,9 +162,11 @@ export const ConcertDetailScreen: React.FC = () => {
           [{ text: 'OK' }]
         );
       } else {
+        haptics.error();
         Alert.alert('Erreur', result.error || 'Impossible d\'ajouter au calendrier');
       }
     } catch (error) {
+      haptics.error();
       Alert.alert('Erreur', 'Impossible d\'ajouter au calendrier');
     }
   };

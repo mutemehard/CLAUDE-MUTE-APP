@@ -19,6 +19,7 @@ import { useStore, useLocation } from '../hooks';
 import { colors, spacing, typography, borderRadius, APP_CONFIG, MUSIC_GENRES } from '../constants';
 import { RootStackParamList, Concert, Artist, Venue } from '../types';
 import { artistService, venueService } from '../services';
+import { haptics } from '../utils';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -150,6 +151,7 @@ export const HomeScreen: React.FC = () => {
   };
 
   const handleFavoritePress = (concert: Concert) => {
+    haptics.medium();
     if (isFavorite('concert', concert.id)) {
       removeFavorite('concert', concert.id);
     } else {
@@ -170,7 +172,15 @@ export const HomeScreen: React.FC = () => {
   };
 
   const handleGenrePress = (genre: string) => {
+    haptics.selection();
     setSelectedGenre(selectedGenre === genre ? null : genre);
+  };
+
+  const handleTabPress = (tabId: string) => {
+    if (tabId !== activeTab) {
+      haptics.light();
+      setActiveTab(tabId);
+    }
   };
 
   // Message contextuel selon l'onglet
@@ -407,7 +417,7 @@ export const HomeScreen: React.FC = () => {
               styles.tab,
               activeTab === tab.id && styles.tabActive,
             ]}
-            onPress={() => setActiveTab(tab.id)}
+            onPress={() => handleTabPress(tab.id)}
           >
             <Text style={styles.tabIcon}>{tab.icon}</Text>
             <Text
