@@ -21,10 +21,12 @@ export interface ScraperOptions {
 }
 
 // Liste des scrapers disponibles
+// DESACTIVES: Ces scrapers utilisent des donnees simulees, pas de vrais concerts
+// TODO: Reactiver quand on aura des vrais scrapers qui fetchent depuis les sites
 const scrapers = [
-  { name: 'shotgun', scraper: shotgunScraper, enabled: true },
-  { name: 'residentAdvisor', scraper: residentAdvisorScraper, enabled: true },
-  { name: 'parisBy', scraper: parisByScraper, enabled: true },
+  { name: 'shotgun', scraper: shotgunScraper, enabled: false },
+  { name: 'residentAdvisor', scraper: residentAdvisorScraper, enabled: false },
+  { name: 'parisBy', scraper: parisByScraper, enabled: false },
 ];
 
 // Scrape tous les evenements de toutes les sources

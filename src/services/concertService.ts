@@ -1,9 +1,8 @@
-// Service pour gérer les données de concerts avec support API et cache
+// Service pour gerer les donnees de concerts avec support API et cache
+// Utilise uniquement les APIs reelles (Bandsintown) - pas de faux concerts
 import { Concert, ConcertFilters, Artist, Venue } from '../types';
-import { mockConcerts, mockArtists, mockVenues } from './mockData';
 import { bandsintownApi } from './api/bandsintown';
 import { openagendaApi } from './api/openagenda';
-import { scrapeAllEvents, mergeScrapedConcerts } from './scrapers';
 
 // Configuration
 const USE_REAL_API = true; // Active pour fetcher les vrais concerts
@@ -186,15 +185,16 @@ const POPULAR_ARTISTS = [
 // API publique du service
 export const concertService = {
   // Récupère tous les concerts (avec cache)
+  // Utilise uniquement les APIs reelles (Bandsintown) - pas de faux concerts
   async getAllConcerts(): Promise<Concert[]> {
     const cacheKey = 'all_concerts';
     const cached = cache.get<Concert[]>(cacheKey);
     if (cached) return cached;
 
     let concerts: Concert[] = [];
-    const concertSources: Concert[][] = [mockConcerts];
+    const concertSources: Concert[][] = [];
 
-    // Fetch depuis les APIs si active
+    // Fetch depuis les APIs reelles
     if (USE_REAL_API) {
       try {
         const apiConcerts = await this.fetchFromApis();
@@ -206,28 +206,14 @@ export const concertService = {
       }
     }
 
-    // Fetch depuis les scrapers si active
-    if (USE_SCRAPERS) {
-      try {
-        const scraperResults = await scrapeAllEvents({ city: 'Paris' });
-        const scrapedConcerts = mergeScrapedConcerts(scraperResults);
-        if (scrapedConcerts.length > 0) {
-          concertSources.push(scrapedConcerts);
-        }
-      } catch (error) {
-        console.error('Error fetching from scrapers:', error);
-      }
-    }
+    // Les scrapers sont desactives car ils utilisent des donnees simulees
+    // TODO: Reactiver quand on aura de vrais scrapers
+    // if (USE_SCRAPERS) { ... }
 
     // Merge toutes les sources
     concerts = mergeConcerts(concertSources);
 
-    // Si aucun resultat, fallback sur mocks
-    if (concerts.length === 0) {
-      await delay(300);
-      concerts = mockConcerts;
-    }
-
+    // Plus de fallback sur les mocks - on ne montre que les vrais concerts
     const sorted = concerts.sort((a, b) =>
       new Date(a.date).getTime() - new Date(b.date).getTime()
     );
@@ -378,29 +364,22 @@ export const concertService = {
   },
 
   // Recherche de concerts par texte
+  // Utilise uniquement l'API Bandsintown pour des resultats reels
   async searchConcerts(query: string): Promise<Concert[]> {
-    const lowerQuery = query.toLowerCase();
-
-    // Si API active, recherche aussi sur Bandsintown
+    // Recherche sur Bandsintown
     if (USE_REAL_API) {
       try {
         const apiResults = await bandsintownApi.getArtistEventsInParis(query);
-        if (apiResults.length > 0) {
-          // Combine avec les mocks qui matchent
-          const mockResults = mockConcerts.filter(c =>
-            c.artist.name.toLowerCase().includes(lowerQuery) ||
-            c.venue.name.toLowerCase().includes(lowerQuery) ||
-            c.genre?.toLowerCase().includes(lowerQuery)
-          );
-          return mergeConcerts([apiResults, mockResults]);
-        }
+        return apiResults;
       } catch (error) {
         console.warn('Search API error:', error);
       }
     }
 
-    await delay(200);
-    return mockConcerts.filter(c =>
+    // Recherche dans les concerts deja caches
+    const allConcerts = await this.getAllConcerts();
+    const lowerQuery = query.toLowerCase();
+    return allConcerts.filter(c =>
       c.artist.name.toLowerCase().includes(lowerQuery) ||
       c.venue.name.toLowerCase().includes(lowerQuery) ||
       c.genre?.toLowerCase().includes(lowerQuery)
@@ -444,53 +423,51 @@ export const concertService = {
 };
 
 export const artistService = {
+  // Recupere tous les artistes depuis les concerts reels
   async getAllArtists(): Promise<Artist[]> {
     const cacheKey = 'all_artists';
     const cached = cache.get<Artist[]>(cacheKey);
     if (cached) return cached;
 
-    await delay(200);
-    cache.set(cacheKey, mockArtists);
-    return mockArtists;
+    // Extrait les artistes uniques des concerts reels
+    const concerts = await concertService.getAllConcerts();
+    const artistMap = new Map<string, Artist>();
+    concerts.forEach(c => {
+      if (!artistMap.has(c.artist.id)) {
+        artistMap.set(c.artist.id, c.artist);
+      }
+    });
+
+    const artists = Array.from(artistMap.values());
+    cache.set(cacheKey, artists);
+    return artists;
   },
 
   async getArtistById(id: string): Promise<Artist | null> {
-    // Essaie d'abord dans les mocks
-    const mockArtist = mockArtists.find(a => a.id === id);
-    if (mockArtist) return mockArtist;
-
-    // Essaie de le trouver dans les concerts
+    // Cherche dans les concerts reels
     const concerts = await concertService.getAllConcerts();
     const concert = concerts.find(c => c.artist.id === id);
     return concert?.artist || null;
   },
 
+  // Recherche d'artistes via l'API Bandsintown
   async searchArtists(query: string): Promise<Artist[]> {
-    const lowerQuery = query.toLowerCase();
-
-    // Si API active, recherche aussi sur Bandsintown
+    // Recherche sur Bandsintown
     if (USE_REAL_API) {
       try {
         const apiArtist = await bandsintownApi.searchArtist(query);
         if (apiArtist) {
-          // Combine avec les mocks qui matchent
-          const mockResults = mockArtists.filter(a =>
-            a.name.toLowerCase().includes(lowerQuery) ||
-            a.genres.some(g => g.toLowerCase().includes(lowerQuery))
-          );
-          // Evite les doublons
-          const combined = [apiArtist, ...mockResults.filter(m =>
-            m.name.toLowerCase() !== apiArtist.name.toLowerCase()
-          )];
-          return combined;
+          return [apiArtist];
         }
       } catch (error) {
         console.warn('Artist search API error:', error);
       }
     }
 
-    await delay(200);
-    return mockArtists.filter(a =>
+    // Recherche dans les artistes des concerts caches
+    const artists = await this.getAllArtists();
+    const lowerQuery = query.toLowerCase();
+    return artists.filter(a =>
       a.name.toLowerCase().includes(lowerQuery) ||
       a.genres.some(g => g.toLowerCase().includes(lowerQuery))
     );
@@ -509,31 +486,37 @@ export const artistService = {
 };
 
 export const venueService = {
+  // Recupere toutes les salles depuis les concerts reels
   async getAllVenues(): Promise<Venue[]> {
     const cacheKey = 'all_venues';
     const cached = cache.get<Venue[]>(cacheKey);
     if (cached) return cached;
 
-    await delay(200);
-    cache.set(cacheKey, mockVenues);
-    return mockVenues;
+    // Extrait les salles uniques des concerts reels
+    const concerts = await concertService.getAllConcerts();
+    const venueMap = new Map<string, Venue>();
+    concerts.forEach(c => {
+      if (!venueMap.has(c.venue.id)) {
+        venueMap.set(c.venue.id, c.venue);
+      }
+    });
+
+    const venues = Array.from(venueMap.values());
+    cache.set(cacheKey, venues);
+    return venues;
   },
 
   async getVenueById(id: string): Promise<Venue | null> {
-    // Essaie d'abord dans les mocks
-    const mockVenue = mockVenues.find(v => v.id === id);
-    if (mockVenue) return mockVenue;
-
-    // Essaie de le trouver dans les concerts
+    // Cherche dans les concerts reels
     const concerts = await concertService.getAllConcerts();
     const concert = concerts.find(c => c.venue.id === id);
     return concert?.venue || null;
   },
 
   async searchVenues(query: string): Promise<Venue[]> {
-    await delay(200);
+    const venues = await this.getAllVenues();
     const lowerQuery = query.toLowerCase();
-    return mockVenues.filter(v =>
+    return venues.filter(v =>
       v.name.toLowerCase().includes(lowerQuery) ||
       v.address.toLowerCase().includes(lowerQuery) ||
       v.arrondissement?.toLowerCase().includes(lowerQuery)
