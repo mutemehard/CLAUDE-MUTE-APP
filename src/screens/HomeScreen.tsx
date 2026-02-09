@@ -218,18 +218,61 @@ export const HomeScreen: React.FC = () => {
 
   // Message contextuel selon l'onglet
   const getEmptyMessage = () => {
-    if (selectedGenre) {
-      return `Pas de concert ${selectedGenre} trouve.`;
+    // Si pas de concerts du tout, probleme de connexion API
+    if (concerts.length === 0 && !isLoading) {
+      return {
+        icon: '📡',
+        title: 'Connexion aux sources...',
+        subtitle: 'Tirez vers le bas pour actualiser',
+        showRetry: true,
+      };
     }
+
+    if (selectedGenre) {
+      return {
+        icon: '🎸',
+        title: `Pas de concert ${selectedGenre}`,
+        subtitle: 'Essayez un autre genre ou periode',
+        showRetry: false,
+      };
+    }
+
     switch (activeTab) {
       case 'tonight':
-        return 'Pas de concert ce soir. Repose-toi !';
+        return {
+          icon: '😴',
+          title: 'Pas de concert ce soir',
+          subtitle: 'Repose-toi ou regarde le week-end !',
+          showRetry: false,
+        };
       case 'weekend':
-        return 'Rien de prevu ce week-end pour l\'instant.';
+        return {
+          icon: '🎉',
+          title: 'Rien ce week-end',
+          subtitle: 'Consultez la semaine prochaine',
+          showRetry: false,
+        };
       case 'week':
-        return 'Semaine calme. Ca arrive !';
+        return {
+          icon: '📅',
+          title: 'Semaine calme',
+          subtitle: 'Explorez les mois a venir',
+          showRetry: false,
+        };
+      case 'month':
+        return {
+          icon: '📆',
+          title: 'Aucun concert ce mois',
+          subtitle: 'Essayez un autre mois',
+          showRetry: false,
+        };
       default:
-        return 'Aucun evenement trouve.';
+        return {
+          icon: '🔍',
+          title: 'Aucun evenement',
+          subtitle: 'De nouveaux concerts arrivent bientot',
+          showRetry: true,
+        };
     }
   };
 
@@ -567,12 +610,29 @@ export const HomeScreen: React.FC = () => {
         ListEmptyComponent={
           !featuredConcert ? (
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyIcon}>
-                {activeTab === 'tonight' ? '😴' : '🔍'}
-              </Text>
-              <Text style={styles.emptyText}>
-                {isLoading ? 'Chargement...' : getEmptyMessage()}
-              </Text>
+              {isLoading ? (
+                <>
+                  <Text style={styles.emptyIcon}>⏳</Text>
+                  <Text style={styles.emptyTitle}>Chargement des concerts...</Text>
+                  <Text style={styles.emptySubtitle}>
+                    Connexion a Bandsintown et Ticketmaster
+                  </Text>
+                </>
+              ) : (
+                <>
+                  <Text style={styles.emptyIcon}>{getEmptyMessage().icon}</Text>
+                  <Text style={styles.emptyTitle}>{getEmptyMessage().title}</Text>
+                  <Text style={styles.emptySubtitle}>{getEmptyMessage().subtitle}</Text>
+                  {getEmptyMessage().showRetry && (
+                    <TouchableOpacity
+                      style={styles.retryButton}
+                      onPress={handleRefresh}
+                    >
+                      <Text style={styles.retryButtonText}>Actualiser</Text>
+                    </TouchableOpacity>
+                  )}
+                </>
+              )}
             </View>
           ) : null
         }
@@ -964,14 +1024,33 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: spacing.xxl * 2,
+    paddingHorizontal: spacing.lg,
   },
   emptyIcon: {
-    fontSize: 48,
+    fontSize: 56,
     marginBottom: spacing.md,
   },
-  emptyText: {
+  emptyTitle: {
+    ...typography.h3,
+    color: colors.textPrimary,
+    textAlign: 'center',
+    marginBottom: spacing.xs,
+  },
+  emptySubtitle: {
     ...typography.body,
     color: colors.textMuted,
     textAlign: 'center',
+  },
+  retryButton: {
+    marginTop: spacing.lg,
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.lg,
+  },
+  retryButtonText: {
+    ...typography.body,
+    color: colors.textPrimary,
+    fontWeight: '600',
   },
 });
