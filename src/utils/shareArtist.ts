@@ -1,6 +1,7 @@
 // Utilitaires de partage pour les artistes
 import { Share, Platform } from 'react-native';
 import { Artist } from '../types';
+import { generateArtistLink } from '../config';
 
 export interface ShareResult {
   success: boolean;
@@ -68,4 +69,9 @@ export const shareArtist = async (artist: Artist): Promise<ShareResult> => {
       error: error instanceof Error ? error.message : 'Erreur de partage',
     };
   }
+};
+
+// Genere un deeplink vers l'artiste
+export const generateArtistDeepLink = (artistId: string): string => {
+  return generateArtistLink(artistId);
 };

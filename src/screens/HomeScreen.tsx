@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { ConcertCard } from '../components/ConcertCard';
+import { ConcertCard, NearbyConcerts } from '../components';
 import { useStore, useLocation } from '../hooks';
 import { colors, spacing, typography, borderRadius, APP_CONFIG, MUSIC_GENRES } from '../constants';
 import { RootStackParamList, Concert, Artist, Venue } from '../types';
@@ -306,11 +306,25 @@ export const HomeScreen: React.FC = () => {
     </TouchableOpacity>
   );
 
+  const handleSeeMapPress = () => {
+    haptics.light();
+    navigation.navigate('Map');
+  };
+
   // Render header with sections
   const renderHeader = () => (
     <>
       {/* Featured concert */}
       {featuredConcert && renderFeaturedConcert()}
+
+      {/* Nearby concerts - only show on "tonight" or "weekend" tabs */}
+      {(activeTab === 'tonight' || activeTab === 'weekend') && (
+        <NearbyConcerts
+          maxDistance={5}
+          limit={5}
+          onSeeAllPress={handleSeeMapPress}
+        />
+      )}
 
       {/* Quick genre filters */}
       <View style={styles.genreSection}>

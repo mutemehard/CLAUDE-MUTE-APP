@@ -11,11 +11,13 @@ export type { ShareResult } from './share';
 export {
   shareArtist,
   generateArtistShareText,
+  generateArtistDeepLink,
 } from './shareArtist';
 
 export {
   shareVenue,
   generateVenueShareText,
+  generateVenueDeepLink,
 } from './shareVenue';
 
 export {

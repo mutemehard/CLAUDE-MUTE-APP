@@ -11,3 +11,4 @@ export {
   VenueDetailSkeleton,
   HomeScreenSkeleton,
 } from './SkeletonLoader';
+export { NearbyConcerts } from './NearbyConcerts';

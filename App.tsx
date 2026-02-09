@@ -20,6 +20,7 @@ import {
   OnboardingScreen,
 } from './src/screens';
 import { colors } from './src/constants';
+import { linking } from './src/config';
 import { RootStackParamList, TabParamList } from './src/types';
 import { useStore, useHydration } from './src/hooks/useStore';
 
@@ -184,7 +185,7 @@ const AppNavigator: React.FC = () => {
 export default function App() {
   return (
     <SafeAreaProvider>
-      <NavigationContainer theme={DarkTheme}>
+      <NavigationContainer theme={DarkTheme} linking={linking}>
         <StatusBar style="light" />
         <AppNavigator />
       </NavigationContainer>

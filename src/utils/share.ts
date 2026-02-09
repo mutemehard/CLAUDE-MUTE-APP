@@ -1,6 +1,7 @@
 // Utilitaires de partage pour les concerts
 import { Share, Platform } from 'react-native';
 import { Concert } from '../types';
+import { generateConcertLink } from '../config';
 
 // Formate la date en francais
 const formatDateFr = (dateStr: string): string => {
@@ -172,5 +173,5 @@ export const copyTicketLink = async (concert: Concert): Promise<boolean> => {
 
 // Genere un deeplink vers le concert (pour partage in-app)
 export const generateConcertDeepLink = (concertId: string): string => {
-  return `mute://concert/${concertId}`;
+  return generateConcertLink(concertId);
 };

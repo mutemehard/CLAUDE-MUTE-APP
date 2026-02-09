@@ -1,6 +1,7 @@
 // Utilitaires de partage pour les salles
 import { Share, Platform } from 'react-native';
 import { Venue } from '../types';
+import { generateVenueLink } from '../config';
 
 export interface ShareResult {
   success: boolean;
@@ -71,4 +72,9 @@ export const shareVenue = async (venue: Venue): Promise<ShareResult> => {
       error: error instanceof Error ? error.message : 'Erreur de partage',
     };
   }
+};
+
+// Genere un deeplink vers la salle
+export const generateVenueDeepLink = (venueId: string): string => {
+  return generateVenueLink(venueId);
 };
