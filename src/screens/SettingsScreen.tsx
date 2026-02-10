@@ -32,6 +32,8 @@ export const SettingsScreen: React.FC = () => {
     weeklyDigest: true,
     weeklyDigestDay: 'friday',
     weeklyDigestTime: '18:00',
+    friendActivity: true,
+    concertReminders: true,
   });
 
   useEffect(() => {
@@ -232,6 +234,36 @@ export const SettingsScreen: React.FC = () => {
                 <Switch
                   value={notifSettings.weeklyDigest}
                   onValueChange={(value) => updateNotifSetting('weeklyDigest', value)}
+                  trackColor={{ false: colors.surfaceLight, true: colors.primary }}
+                  thumbColor={colors.textPrimary}
+                />
+              </View>
+
+              <View style={styles.settingItem}>
+                <View style={styles.settingInfo}>
+                  <Text style={styles.settingLabel}>Activite des amis</Text>
+                  <Text style={styles.settingDescription}>
+                    Alerte quand un ami marque un concert
+                  </Text>
+                </View>
+                <Switch
+                  value={notifSettings.friendActivity}
+                  onValueChange={(value) => updateNotifSetting('friendActivity', value)}
+                  trackColor={{ false: colors.surfaceLight, true: colors.primary }}
+                  thumbColor={colors.textPrimary}
+                />
+              </View>
+
+              <View style={styles.settingItem}>
+                <View style={styles.settingInfo}>
+                  <Text style={styles.settingLabel}>Rappels de concerts</Text>
+                  <Text style={styles.settingDescription}>
+                    Rappel la veille des concerts ou tu vas
+                  </Text>
+                </View>
+                <Switch
+                  value={notifSettings.concertReminders}
+                  onValueChange={(value) => updateNotifSetting('concertReminders', value)}
                   trackColor={{ false: colors.surfaceLight, true: colors.primary }}
                   thumbColor={colors.textPrimary}
                 />

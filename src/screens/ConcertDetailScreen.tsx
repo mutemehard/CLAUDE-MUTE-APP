@@ -14,7 +14,7 @@ import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useStore } from '../hooks';
 import { concertService, notificationService, calendarService } from '../services';
-import { shareConcert, haptics } from '../utils';
+import { shareConcert, inviteFriendToConcert, haptics } from '../utils';
 import { colors, spacing, typography, borderRadius } from '../constants';
 import { RootStackParamList, Concert, ParticipationStatus } from '../types';
 
@@ -133,6 +133,15 @@ export const ConcertDetailScreen: React.FC = () => {
   const handleShare = async () => {
     if (!concert) return;
     const result = await shareConcert(concert);
+    if (!result.success && result.error) {
+      Alert.alert('Erreur', result.error);
+    }
+  };
+
+  const handleInviteFriend = async () => {
+    if (!concert) return;
+    haptics.light();
+    const result = await inviteFriendToConcert(concert);
     if (!result.success && result.error) {
       Alert.alert('Erreur', result.error);
     }
@@ -281,8 +290,11 @@ export const ConcertDetailScreen: React.FC = () => {
             <Text style={styles.backIcon}>←</Text>
           </TouchableOpacity>
 
-          {/* Share & Favorite buttons */}
+          {/* Share, Invite & Favorite buttons */}
           <View style={styles.headerActions}>
+            <TouchableOpacity style={styles.headerActionButton} onPress={handleInviteFriend}>
+              <Text style={styles.headerActionIcon}>👥</Text>
+            </TouchableOpacity>
             <TouchableOpacity style={styles.headerActionButton} onPress={handleShare}>
               <Text style={styles.headerActionIcon}>📤</Text>
             </TouchableOpacity>

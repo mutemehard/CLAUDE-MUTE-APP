@@ -175,3 +175,153 @@ export const copyTicketLink = async (concert: Concert): Promise<boolean> => {
 export const generateConcertDeepLink = (concertId: string): string => {
   return generateConcertLink(concertId);
 };
+
+// Invite un ami a un concert
+export const inviteFriendToConcert = async (
+  concert: Concert,
+  friendName?: string
+): Promise<ShareResult> => {
+  try {
+    const dateFormatted = formatDateFr(concert.date);
+    const greeting = friendName ? `Hey ${friendName} !` : 'Hey !';
+
+    const message = [
+      greeting,
+      ``,
+      `Ca te dit d'aller voir ${concert.artist.name} ?`,
+      ``,
+      `${concert.venue.name}`,
+      `${dateFormatted} a ${concert.startTime}`,
+      ``,
+      formatPrice(concert),
+      ``,
+      concert.ticketUrl ? `Billets: ${concert.ticketUrl}` : '',
+      ``,
+      `Dis-moi si tu es chaud(e) !`,
+      ``,
+      `Envoye via MUTE - L'app des concerts a Paris`,
+    ].filter(Boolean).join('\n');
+
+    const result = await Share.share(
+      {
+        message,
+        title: `Invitation concert: ${concert.artist.name}`,
+        ...(Platform.OS === 'ios' && concert.ticketUrl ? { url: concert.ticketUrl } : {}),
+      },
+      {
+        subject: `On va voir ${concert.artist.name} ?`,
+        dialogTitle: 'Inviter un ami',
+      }
+    );
+
+    if (result.action === Share.sharedAction) {
+      return { success: true, action: 'shared' };
+    } else if (result.action === Share.dismissedAction) {
+      return { success: true, action: 'dismissed' };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Invite friend error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Erreur d\'invitation',
+    };
+  }
+};
+
+// Partage ses concerts a venir avec ses amis
+export const shareUpcomingConcerts = async (
+  concerts: { artistName: string; venueName: string; date: string }[]
+): Promise<ShareResult> => {
+  if (concerts.length === 0) {
+    return { success: false, error: 'Aucun concert prevu' };
+  }
+
+  try {
+    const lines = [
+      `Mes prochains concerts (${concerts.length})`,
+      ``,
+    ];
+
+    concerts.forEach((concert, index) => {
+      const date = new Date(concert.date);
+      const dateFormatted = date.toLocaleDateString('fr-FR', {
+        day: 'numeric',
+        month: 'short',
+      });
+      lines.push(`${dateFormatted} - ${concert.artistName} @ ${concert.venueName}`);
+    });
+
+    lines.push(``);
+    lines.push(`Tu viens avec moi a un de ces concerts ?`);
+    lines.push(``);
+    lines.push(`Partage via MUTE`);
+
+    const message = lines.join('\n');
+
+    const result = await Share.share(
+      {
+        message,
+        title: 'Mes prochains concerts',
+      },
+      {
+        subject: 'Mes prochains concerts',
+        dialogTitle: 'Partager mes concerts',
+      }
+    );
+
+    if (result.action === Share.sharedAction) {
+      return { success: true, action: 'shared' };
+    }
+
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Erreur de partage',
+    };
+  }
+};
+
+// Genere un message pour inviter a telecharger l'app
+export const shareApp = async (): Promise<ShareResult> => {
+  try {
+    const message = [
+      `Decouvre MUTE !`,
+      ``,
+      `L'app pour trouver tous les concerts a Paris et en Ile-de-France.`,
+      ``,
+      `- Concerts ce soir, ce week-end, ce mois`,
+      `- Artistes et salles a suivre`,
+      `- Vois ou vont tes amis`,
+      ``,
+      `Rejoins-moi sur MUTE !`,
+      ``,
+      // TODO: Add actual app store links
+      `Telecharge l'app: https://mute.app`,
+    ].join('\n');
+
+    const result = await Share.share(
+      {
+        message,
+        title: 'MUTE - Concerts a Paris',
+      },
+      {
+        subject: 'Decouvre MUTE !',
+        dialogTitle: 'Partager MUTE',
+      }
+    );
+
+    if (result.action === Share.sharedAction) {
+      return { success: true, action: 'shared' };
+    }
+
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Erreur de partage',
+    };
+  }
+};

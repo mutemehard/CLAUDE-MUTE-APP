@@ -5,6 +5,9 @@ export {
   generateConcertShareText,
   generateConcertShareTextShort,
   generateConcertDeepLink,
+  inviteFriendToConcert,
+  shareUpcomingConcerts,
+  shareApp,
 } from './share';
 export type { ShareResult } from './share';
 

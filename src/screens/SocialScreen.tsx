@@ -17,7 +17,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, typography, borderRadius, APP_CONFIG } from '../constants';
 import { RootStackParamList, Friend, FriendActivity, ConcertParticipation } from '../types';
 import { useStore } from '../hooks';
-import { haptics } from '../utils';
+import { haptics, shareApp } from '../utils';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -452,7 +452,13 @@ export const SocialScreen: React.FC = () => {
               <Text style={styles.inviteText}>
                 Partage MUTE avec tes amis pour voir leurs concerts
               </Text>
-              <TouchableOpacity style={styles.inviteButton}>
+              <TouchableOpacity
+                style={styles.inviteButton}
+                onPress={async () => {
+                  haptics.light();
+                  await shareApp();
+                }}
+              >
                 <Text style={styles.inviteButtonText}>Partager l'app</Text>
               </TouchableOpacity>
             </View>

@@ -22,6 +22,8 @@ export interface NotificationSettings {
   weeklyDigest: boolean;
   weeklyDigestDay: 'friday' | 'saturday' | 'sunday';
   weeklyDigestTime: string; // HH:mm format
+  friendActivity: boolean; // Notify when friends mark concerts
+  concertReminders: boolean; // Remind before concerts you're going to
 }
 
 const DEFAULT_SETTINGS: NotificationSettings = {
@@ -33,6 +35,8 @@ const DEFAULT_SETTINGS: NotificationSettings = {
   weeklyDigest: true,
   weeklyDigestDay: 'friday',
   weeklyDigestTime: '18:00',
+  friendActivity: true,
+  concertReminders: true,
 };
 
 export const notificationService = {
@@ -139,6 +143,43 @@ export const notificationService = {
       title: `Concert a ${venue.name}`,
       body: `${concert.artist.name} - ${formatDate(concert.date)}`,
       data: { type: 'venue_concert', venueId: venue.id, concertId: concert.id },
+    });
+  },
+
+  // Notification quand un ami marque un concert
+  async notifyFriendActivity(
+    friendName: string,
+    artistName: string,
+    venueName: string,
+    date: string,
+    status: 'going' | 'interested',
+    concertId: string
+  ): Promise<void> {
+    const statusText = status === 'going' ? 'va a' : 'est interesse par';
+    await this.scheduleLocalNotification({
+      title: `${friendName} ${statusText} un concert`,
+      body: `${artistName} @ ${venueName} - ${formatDate(date)}`,
+      data: { type: 'friend_activity', concertId },
+    });
+  },
+
+  // Notification quand plusieurs amis vont a un concert
+  async notifyFriendsGoingToConcert(
+    friendNames: string[],
+    artistName: string,
+    venueName: string,
+    date: string,
+    concertId: string
+  ): Promise<void> {
+    const count = friendNames.length;
+    const names = count <= 2
+      ? friendNames.join(' et ')
+      : `${friendNames[0]} et ${count - 1} autres amis`;
+
+    await this.scheduleLocalNotification({
+      title: `${names} ${count > 1 ? 'vont' : 'va'} a ${artistName}`,
+      body: `${venueName} - ${formatDate(date)}. Tu veux les rejoindre ?`,
+      data: { type: 'friends_concert', concertId },
     });
   },
 
