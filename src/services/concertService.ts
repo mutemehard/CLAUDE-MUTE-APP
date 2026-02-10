@@ -8,6 +8,7 @@ import { API_CONFIG } from '../config/api';
 
 // Configuration
 const CACHE_DURATION = API_CONFIG.cache.duration;
+const USE_REAL_API = true; // Toggle to use real APIs vs mock data
 
 // Cache simple en memoire
 interface CacheEntry<T> {

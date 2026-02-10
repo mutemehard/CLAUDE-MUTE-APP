@@ -34,6 +34,8 @@ const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
   weeklyDigest: true,
   weeklyDigestDay: 'friday',
   weeklyDigestTime: '18:00',
+  friendActivity: true,
+  concertReminders: true,
 };
 
 export const storageService = {

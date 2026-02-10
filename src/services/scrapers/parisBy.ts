@@ -21,6 +21,7 @@ export const parisByScraper = {
       const mockConcerts: Concert[] = [
         {
           id: generateId('parisBy', 'pb_1'),
+          sourceId: 'pb_1',
           artist: {
             id: generateId('parisBy', 'artist_pb1'),
             name: 'Phoenix',
@@ -49,6 +50,7 @@ export const parisByScraper = {
         },
         {
           id: generateId('parisBy', 'pb_2'),
+          sourceId: 'pb_2',
           artist: {
             id: generateId('parisBy', 'artist_pb2'),
             name: 'Jazz a la Villette',
@@ -75,6 +77,7 @@ export const parisByScraper = {
         },
         {
           id: generateId('parisBy', 'pb_3'),
+          sourceId: 'pb_3',
           artist: {
             id: generateId('parisBy', 'artist_pb3'),
             name: 'Stromae',
@@ -103,6 +106,7 @@ export const parisByScraper = {
         },
         {
           id: generateId('parisBy', 'pb_4'),
+          sourceId: 'pb_4',
           artist: {
             id: generateId('parisBy', 'artist_pb4'),
             name: 'Aya Nakamura',
@@ -130,6 +134,7 @@ export const parisByScraper = {
         },
         {
           id: generateId('parisBy', 'pb_5'),
+          sourceId: 'pb_5',
           artist: {
             id: generateId('parisBy', 'artist_pb5'),
             name: 'Orelsan',
@@ -156,6 +161,7 @@ export const parisByScraper = {
         },
         {
           id: generateId('parisBy', 'pb_6'),
+          sourceId: 'pb_6',
           artist: {
             id: generateId('parisBy', 'artist_pb6'),
             name: 'Ibrahim Maalouf',
@@ -183,6 +189,7 @@ export const parisByScraper = {
         },
         {
           id: generateId('parisBy', 'pb_7'),
+          sourceId: 'pb_7',
           artist: {
             id: generateId('parisBy', 'artist_pb7'),
             name: 'Louise Attaque',
@@ -210,6 +217,7 @@ export const parisByScraper = {
         },
         {
           id: generateId('parisBy', 'pb_8'),
+          sourceId: 'pb_8',
           artist: {
             id: generateId('parisBy', 'artist_pb8'),
             name: 'Angele',

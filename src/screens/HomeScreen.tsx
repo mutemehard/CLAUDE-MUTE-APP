@@ -102,11 +102,10 @@ export const HomeScreen: React.FC = () => {
     if (!location) return {};
     const distances: Record<string, string | null> = {};
     displayedConcerts.forEach(concert => {
-      const distance = getDistanceFromUser(concert.venue.latitude, concert.venue.longitude);
-      distances[concert.id] = distance !== null ? formatDistance(distance) : null;
+      distances[concert.id] = formatDistance(concert.venue.latitude, concert.venue.longitude);
     });
     return distances;
-  }, [displayedConcerts, location, getDistanceFromUser, formatDistance]);
+  }, [displayedConcerts, location, formatDistance]);
 
   // Count active filters
   const activeFiltersCount = [

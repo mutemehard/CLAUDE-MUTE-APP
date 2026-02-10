@@ -81,6 +81,7 @@ const transformEvent = (event: ShotgunEvent): Concert[] => {
 
     return [{
       id: generateId('shotgun', event.id),
+      sourceId: event.id,
       artist,
       venue,
       date: parseDate(event.startDate),
@@ -120,6 +121,7 @@ const transformEvent = (event: ShotgunEvent): Concert[] => {
 
   return [{
     id: generateId('shotgun', event.id),
+    sourceId: event.id,
     artist,
     venue,
     date: parseDate(event.startDate),

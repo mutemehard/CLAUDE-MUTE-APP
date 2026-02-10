@@ -204,7 +204,7 @@ export const openagendaApi = {
 
     // Agendas de concerts/musique a Paris
     // Ces IDs sont a configurer selon les agendas que vous voulez suivre
-    const MUSIC_AGENDA_IDS = [
+    const MUSIC_AGENDA_IDS: string[] = [
       // Exemples d'agendas musicaux parisiens:
       // '12345678', // Agenda concerts Paris
     ];

@@ -22,6 +22,7 @@ export const residentAdvisorScraper = {
       const mockConcerts: Concert[] = [
         {
           id: generateId('ra', 'ra_1'),
+          sourceId: 'ra_1',
           artist: {
             id: generateId('ra', 'artist_ra1'),
             name: 'Ben Klock',
@@ -49,6 +50,7 @@ export const residentAdvisorScraper = {
         },
         {
           id: generateId('ra', 'ra_2'),
+          sourceId: 'ra_2',
           artist: {
             id: generateId('ra', 'artist_ra2'),
             name: 'Peggy Gou',
@@ -76,6 +78,7 @@ export const residentAdvisorScraper = {
         },
         {
           id: generateId('ra', 'ra_3'),
+          sourceId: 'ra_3',
           artist: {
             id: generateId('ra', 'artist_ra3'),
             name: 'Charlotte de Witte',
@@ -103,6 +106,7 @@ export const residentAdvisorScraper = {
         },
         {
           id: generateId('ra', 'ra_4'),
+          sourceId: 'ra_4',
           artist: {
             id: generateId('ra', 'artist_ra4'),
             name: 'Maceo Plex',
@@ -130,6 +134,7 @@ export const residentAdvisorScraper = {
         },
         {
           id: generateId('ra', 'ra_5'),
+          sourceId: 'ra_5',
           artist: {
             id: generateId('ra', 'artist_ra5'),
             name: 'Richie Hawtin',

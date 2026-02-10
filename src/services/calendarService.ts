@@ -3,6 +3,23 @@ import * as Calendar from 'expo-calendar';
 import { Platform } from 'react-native';
 import { Concert } from '../types';
 
+// Type pour les calendriers expo-calendar
+interface ExpoCalendar {
+  id: string;
+  title: string;
+  source?: { name: string };
+  allowsModifications: boolean;
+  isPrimary?: boolean;
+}
+
+// Type pour les evenements calendrier
+interface ExpoCalendarEvent {
+  id: string;
+  title: string;
+  startDate: Date;
+  endDate: Date;
+}
+
 export interface CalendarEventResult {
   success: boolean;
   eventId?: string;
@@ -38,24 +55,24 @@ const getDefaultCalendarId = async (): Promise<string | null> => {
     // Sur iOS, cherche le calendrier par defaut
     if (Platform.OS === 'ios') {
       const defaultCalendar = calendars.find(
-        cal => cal.source?.name === 'iCloud' || cal.source?.name === 'Default'
+        (cal: ExpoCalendar) => cal.source?.name === 'iCloud' || cal.source?.name === 'Default'
       );
       if (defaultCalendar) return defaultCalendar.id;
 
       // Sinon prend le premier calendrier modifiable
-      const writableCalendar = calendars.find(cal => cal.allowsModifications);
+      const writableCalendar = calendars.find((cal: ExpoCalendar) => cal.allowsModifications);
       if (writableCalendar) return writableCalendar.id;
     }
 
     // Sur Android
     if (Platform.OS === 'android') {
       const primaryCalendar = calendars.find(
-        cal => cal.isPrimary && cal.allowsModifications
+        (cal: ExpoCalendar) => cal.isPrimary && cal.allowsModifications
       );
       if (primaryCalendar) return primaryCalendar.id;
 
       // Sinon prend le premier calendrier modifiable
-      const writableCalendar = calendars.find(cal => cal.allowsModifications);
+      const writableCalendar = calendars.find((cal: ExpoCalendar) => cal.allowsModifications);
       if (writableCalendar) return writableCalendar.id;
 
       // Si aucun calendrier, en cree un
@@ -208,7 +225,7 @@ export const isConcertInCalendar = async (concert: Concert): Promise<string | nu
 
     // Cherche un evenement qui correspond
     const matchingEvent = events.find(
-      event => event.title?.includes(concert.artist.name) ||
+      (event: ExpoCalendarEvent) => event.title?.includes(concert.artist.name) ||
                event.title?.includes(concert.venue.name)
     );
 

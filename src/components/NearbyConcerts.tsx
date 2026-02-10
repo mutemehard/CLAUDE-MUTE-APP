@@ -161,8 +161,7 @@ export const NearbyConcerts: React.FC<NearbyConcertsProps> = ({
         contentContainerStyle={styles.scrollContent}
       >
         {concerts.map(concert => {
-          const distance = getDistanceFromUser(concert.venue.latitude, concert.venue.longitude);
-          const distanceFormatted = distance !== null ? formatDistance(distance) : null;
+          const distanceFormatted = formatDistance(concert.venue.latitude, concert.venue.longitude);
 
           return (
             <TouchableOpacity
