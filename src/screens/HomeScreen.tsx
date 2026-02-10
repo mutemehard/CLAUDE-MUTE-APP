@@ -72,7 +72,7 @@ const getNextWeekendDates = (): { start: Date; end: Date } => {
 
 export const HomeScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
-  const { concerts, filters, isLoading, fetchConcerts, isFavorite, addFavorite, removeFavorite, getFriendsForConcert } = useStore();
+  const { concerts, filters, isLoading, fetchConcerts, isFavorite, addFavorite, removeFavorite, getFriendsForConcert, friends, friendsActivity } = useStore();
   const { location, getDistanceFromUser, formatDistance, requestPermission } = useLocation();
   const [activeTab, setActiveTab] = useState('tonight');
   const [displayedConcerts, setDisplayedConcerts] = useState<Concert[]>([]);
@@ -449,6 +449,66 @@ export const HomeScreen: React.FC = () => {
           limit={5}
           onSeeAllPress={handleSeeMapPress}
         />
+      )}
+
+      {/* Friends going section - show if friends have upcoming concerts */}
+      {friends.length > 0 && displayedConcerts.some(c => {
+        const friendsInfo = getFriendsForConcert(c.id);
+        return friendsInfo.going.length > 0 || friendsInfo.interested.length > 0;
+      }) && (
+        <View style={styles.friendsSection}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Tes amis y vont</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Social')}>
+              <Text style={styles.seeAllText}>Voir tout</Text>
+            </TouchableOpacity>
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.friendsConcertList}>
+            {displayedConcerts
+              .filter(c => {
+                const friendsInfo = getFriendsForConcert(c.id);
+                return friendsInfo.going.length > 0;
+              })
+              .slice(0, 5)
+              .map(concert => {
+                const friendsInfo = getFriendsForConcert(concert.id);
+                return (
+                  <TouchableOpacity
+                    key={concert.id}
+                    style={styles.friendsConcertCard}
+                    onPress={() => handleConcertPress(concert)}
+                  >
+                    <View style={styles.friendsConcertDate}>
+                      <Text style={styles.friendsConcertDay}>
+                        {new Date(concert.date).getDate()}
+                      </Text>
+                      <Text style={styles.friendsConcertMonth}>
+                        {new Date(concert.date).toLocaleDateString('fr-FR', { month: 'short' })}
+                      </Text>
+                    </View>
+                    <Text style={styles.friendsConcertArtist} numberOfLines={1}>
+                      {concert.artist.name}
+                    </Text>
+                    <Text style={styles.friendsConcertVenue} numberOfLines={1}>
+                      {concert.venue.name}
+                    </Text>
+                    <View style={styles.friendsConcertAvatars}>
+                      {friendsInfo.going.slice(0, 3).map((friend, i) => (
+                        <View key={friend.id} style={[styles.friendAvatar, { marginLeft: i > 0 ? -8 : 0 }]}>
+                          <Text style={styles.friendAvatarText}>{friend.displayName.charAt(0)}</Text>
+                        </View>
+                      ))}
+                      {friendsInfo.going.length > 0 && (
+                        <Text style={styles.friendsCount}>
+                          {friendsInfo.going.length} ami{friendsInfo.going.length > 1 ? 's' : ''}
+                        </Text>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+          </ScrollView>
+        </View>
       )}
 
       {/* Quick genre filters */}
@@ -1001,6 +1061,74 @@ const styles = StyleSheet.create({
   venueLocation: {
     ...typography.caption,
     color: colors.textMuted,
+  },
+  // Friends section
+  friendsSection: {
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  friendsConcertList: {
+    paddingHorizontal: spacing.md,
+    gap: spacing.sm,
+  },
+  friendsConcertCard: {
+    width: 140,
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    marginRight: spacing.sm,
+  },
+  friendsConcertDate: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: spacing.xs,
+    marginBottom: spacing.xs,
+  },
+  friendsConcertDay: {
+    ...typography.h3,
+    color: colors.primary,
+    fontWeight: '700',
+  },
+  friendsConcertMonth: {
+    ...typography.caption,
+    color: colors.textMuted,
+    textTransform: 'uppercase',
+  },
+  friendsConcertArtist: {
+    ...typography.body,
+    color: colors.textPrimary,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  friendsConcertVenue: {
+    ...typography.caption,
+    color: colors.textMuted,
+    marginBottom: spacing.sm,
+  },
+  friendsConcertAvatars: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing.xs,
+  },
+  friendAvatar: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.surface,
+  },
+  friendAvatarText: {
+    fontSize: 10,
+    color: colors.textPrimary,
+    fontWeight: '600',
+  },
+  friendsCount: {
+    ...typography.caption,
+    color: colors.textMuted,
+    marginLeft: spacing.sm,
   },
   // Concerts section
   concertsSectionHeader: {

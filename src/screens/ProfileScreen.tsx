@@ -243,12 +243,25 @@ export const ProfileScreen: React.FC = () => {
               <Text style={styles.logo}>{APP_CONFIG.name}</Text>
               <Text style={styles.subtitle}>Mon profil</Text>
             </View>
-            <TouchableOpacity
-              style={styles.settingsButton}
-              onPress={() => navigation.navigate('Settings')}
-            >
-              <Text style={styles.settingsIcon}>⚙️</Text>
-            </TouchableOpacity>
+            <View style={styles.headerButtons}>
+              <TouchableOpacity
+                style={styles.socialButton}
+                onPress={() => navigation.navigate('Social')}
+              >
+                <Text style={styles.socialIcon}>👥</Text>
+                {friends.length > 0 && (
+                  <View style={styles.socialBadge}>
+                    <Text style={styles.socialBadgeText}>{friends.length}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.settingsButton}
+                onPress={() => navigation.navigate('Settings')}
+              >
+                <Text style={styles.settingsIcon}>⚙️</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
 
@@ -658,6 +671,40 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  socialButton: {
+    width: 44,
+    height: 44,
+    backgroundColor: colors.surface,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  socialIcon: {
+    fontSize: 20,
+  },
+  socialBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: colors.primary,
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  socialBadgeText: {
+    ...typography.caption,
+    color: colors.textPrimary,
+    fontSize: 10,
+    fontWeight: '700',
   },
   settingsButton: {
     width: 44,

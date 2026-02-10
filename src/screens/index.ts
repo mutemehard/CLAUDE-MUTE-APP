@@ -9,3 +9,4 @@ export { VenueDetailScreen } from './VenueDetailScreen';
 export { FilterScreen } from './FilterScreen';
 export { SettingsScreen } from './SettingsScreen';
 export { OnboardingScreen } from './OnboardingScreen';
+export { SocialScreen } from './SocialScreen';

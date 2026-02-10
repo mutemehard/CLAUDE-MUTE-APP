@@ -123,6 +123,7 @@ export type RootStackParamList = {
   Filters: undefined;
   Settings: undefined;
   Map: undefined;
+  Social: undefined;
 };
 
 // Type pour l'historique des concerts vus

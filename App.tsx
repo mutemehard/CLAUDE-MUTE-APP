@@ -18,6 +18,7 @@ import {
   FilterScreen,
   SettingsScreen,
   OnboardingScreen,
+  SocialScreen,
 } from './src/screens';
 import { colors } from './src/constants';
 import { linking } from './src/config';
@@ -173,6 +174,13 @@ const AppNavigator: React.FC = () => {
       <Stack.Screen
         name="Settings"
         component={SettingsScreen}
+        options={{
+          animation: 'slide_from_right',
+        }}
+      />
+      <Stack.Screen
+        name="Social"
+        component={SocialScreen}
         options={{
           animation: 'slide_from_right',
         }}
