@@ -203,3 +203,60 @@ export interface SocialStats {
   concertsInterested: number;
   sharedConcertsWithFriends: number;
 }
+
+// Visibilite du profil (comme BeReal - controle utilisateur)
+export type VisibilityLevel = 'public' | 'friends' | 'private';
+
+export interface ProfileVisibility {
+  score: VisibilityLevel;          // Visibilite du score total
+  history: VisibilityLevel;        // Visibilite de l'historique des concerts
+  activity: VisibilityLevel;       // Visibilite de l'activite (going/interested)
+  followedArtists: VisibilityLevel; // Visibilite des artistes suivis
+}
+
+// Stats par artiste (vu X fois, etc.)
+export interface ArtistStats {
+  artistId: string;
+  artistName: string;
+  seenCount: number;          // Nombre de fois vu
+  firstSeen?: string;         // Date du premier concert vu
+  lastSeen?: string;          // Date du dernier concert vu
+  venues: string[];           // Salles ou l'artiste a ete vu
+  totalScore: number;         // Score total pour cet artiste
+}
+
+// === MUTUAL FOLLOW SYSTEM (BeReal style) ===
+
+// Statut d'une demande de suivi
+export type FollowRequestStatus = 'pending' | 'accepted' | 'declined';
+
+// Demande de suivi envoyee
+export interface FollowRequest {
+  id: string;
+  fromUserId: string;
+  toUserId: string;
+  toUserName: string;
+  toUserAvatar?: string;
+  status: FollowRequestStatus;
+  createdAt: string;
+  respondedAt?: string;
+}
+
+// Demande de suivi recue
+export interface IncomingFollowRequest {
+  id: string;
+  fromUserId: string;
+  fromUserName: string;
+  fromUserAvatar?: string;
+  createdAt: string;
+}
+
+// Relation d'amitie (follow mutuel confirme)
+export interface Friendship {
+  id: string;
+  friendId: string;
+  friendName: string;
+  friendAvatar?: string;
+  createdAt: string;          // Date de creation de l'amitie
+  mutualSince: string;        // Date du follow mutuel
+}

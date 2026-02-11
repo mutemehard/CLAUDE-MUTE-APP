@@ -13,15 +13,31 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, typography, borderRadius, APP_CONFIG } from '../constants';
-import { RootStackParamList } from '../types';
+import { RootStackParamList, ProfileVisibility, VisibilityLevel } from '../types';
 import { notificationService, storageService, NotificationSettings } from '../services';
 import { useStore } from '../hooks';
+import { haptics } from '../utils';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
+// Labels pour les niveaux de visibilité
+const visibilityLabels: Record<VisibilityLevel, { label: string; icon: string }> = {
+  public: { label: 'Public', icon: '🌐' },
+  friends: { label: 'Amis', icon: '👥' },
+  private: { label: 'Prive', icon: '🔒' },
+};
+
 export const SettingsScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
-  const { attendedConcerts, favorites, clearRecentSearches } = useStore();
+  const {
+    attendedConcerts,
+    favorites,
+    clearRecentSearches,
+    profileVisibility,
+    setProfileVisibility,
+    followedArtists,
+    friendships,
+  } = useStore();
 
   const [notifSettings, setNotifSettings] = useState<NotificationSettings>({
     enabled: true,
@@ -34,6 +50,8 @@ export const SettingsScreen: React.FC = () => {
     weeklyDigestTime: '18:00',
     friendActivity: true,
     concertReminders: true,
+    hotConcerts: true,
+    hotConcertThreshold: 3,
   });
 
   useEffect(() => {
@@ -115,11 +133,22 @@ export const SettingsScreen: React.FC = () => {
     console.log('Exported data:', data);
   };
 
+  // Fonction pour cycler les niveaux de visibilite
+  const cycleVisibility = (key: keyof ProfileVisibility) => {
+    const levels: VisibilityLevel[] = ['public', 'friends', 'private'];
+    const currentIndex = levels.indexOf(profileVisibility[key]);
+    const nextIndex = (currentIndex + 1) % levels.length;
+    haptics.selection();
+    setProfileVisibility({ [key]: levels[nextIndex] });
+  };
+
   const stats = {
     favorites: favorites.length,
     attendedConcerts: attendedConcerts.length,
     artists: favorites.filter(f => f.type === 'artist').length,
     venues: favorites.filter(f => f.type === 'venue').length,
+    followedArtists: followedArtists.length,
+    friends: friendships.length,
   };
 
   return (
@@ -268,8 +297,143 @@ export const SettingsScreen: React.FC = () => {
                   thumbColor={colors.textPrimary}
                 />
               </View>
+
+              <View style={styles.settingItem}>
+                <View style={styles.settingInfo}>
+                  <Text style={styles.settingLabel}>🔥 Concerts socialement chauds</Text>
+                  <Text style={styles.settingDescription}>
+                    Alerte quand {notifSettings.hotConcertThreshold || 3}+ amis vont au meme concert
+                  </Text>
+                </View>
+                <Switch
+                  value={notifSettings.hotConcerts}
+                  onValueChange={(value) => updateNotifSetting('hotConcerts', value)}
+                  trackColor={{ false: colors.surfaceLight, true: colors.primary }}
+                  thumbColor={colors.textPrimary}
+                />
+              </View>
             </>
           )}
+        </View>
+
+        {/* Visibilite du profil */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Visibilite du profil</Text>
+          <Text style={styles.sectionSubtitle}>
+            Controle qui peut voir tes informations (comme BeReal)
+          </Text>
+
+          <TouchableOpacity
+            style={styles.visibilityItem}
+            onPress={() => cycleVisibility('score')}
+          >
+            <View style={styles.visibilityInfo}>
+              <Text style={styles.visibilityIcon}>🏆</Text>
+              <View style={styles.visibilityText}>
+                <Text style={styles.settingLabel}>Score total</Text>
+                <Text style={styles.settingDescription}>
+                  Ton nombre de concerts vus
+                </Text>
+              </View>
+            </View>
+            <View style={[
+              styles.visibilityBadge,
+              profileVisibility.score === 'public' && styles.visibilityBadgePublic,
+              profileVisibility.score === 'friends' && styles.visibilityBadgeFriends,
+              profileVisibility.score === 'private' && styles.visibilityBadgePrivate,
+            ]}>
+              <Text style={styles.visibilityBadgeIcon}>
+                {visibilityLabels[profileVisibility.score].icon}
+              </Text>
+              <Text style={styles.visibilityBadgeText}>
+                {visibilityLabels[profileVisibility.score].label}
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.visibilityItem}
+            onPress={() => cycleVisibility('history')}
+          >
+            <View style={styles.visibilityInfo}>
+              <Text style={styles.visibilityIcon}>📅</Text>
+              <View style={styles.visibilityText}>
+                <Text style={styles.settingLabel}>Historique des concerts</Text>
+                <Text style={styles.settingDescription}>
+                  La liste des concerts que tu as vus
+                </Text>
+              </View>
+            </View>
+            <View style={[
+              styles.visibilityBadge,
+              profileVisibility.history === 'public' && styles.visibilityBadgePublic,
+              profileVisibility.history === 'friends' && styles.visibilityBadgeFriends,
+              profileVisibility.history === 'private' && styles.visibilityBadgePrivate,
+            ]}>
+              <Text style={styles.visibilityBadgeIcon}>
+                {visibilityLabels[profileVisibility.history].icon}
+              </Text>
+              <Text style={styles.visibilityBadgeText}>
+                {visibilityLabels[profileVisibility.history].label}
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.visibilityItem}
+            onPress={() => cycleVisibility('activity')}
+          >
+            <View style={styles.visibilityInfo}>
+              <Text style={styles.visibilityIcon}>✓</Text>
+              <View style={styles.visibilityText}>
+                <Text style={styles.settingLabel}>Activite (Going/Interesse)</Text>
+                <Text style={styles.settingDescription}>
+                  Tes participations aux concerts a venir
+                </Text>
+              </View>
+            </View>
+            <View style={[
+              styles.visibilityBadge,
+              profileVisibility.activity === 'public' && styles.visibilityBadgePublic,
+              profileVisibility.activity === 'friends' && styles.visibilityBadgeFriends,
+              profileVisibility.activity === 'private' && styles.visibilityBadgePrivate,
+            ]}>
+              <Text style={styles.visibilityBadgeIcon}>
+                {visibilityLabels[profileVisibility.activity].icon}
+              </Text>
+              <Text style={styles.visibilityBadgeText}>
+                {visibilityLabels[profileVisibility.activity].label}
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.visibilityItem}
+            onPress={() => cycleVisibility('followedArtists')}
+          >
+            <View style={styles.visibilityInfo}>
+              <Text style={styles.visibilityIcon}>🎤</Text>
+              <View style={styles.visibilityText}>
+                <Text style={styles.settingLabel}>Artistes suivis</Text>
+                <Text style={styles.settingDescription}>
+                  Les artistes que tu suis ({stats.followedArtists})
+                </Text>
+              </View>
+            </View>
+            <View style={[
+              styles.visibilityBadge,
+              profileVisibility.followedArtists === 'public' && styles.visibilityBadgePublic,
+              profileVisibility.followedArtists === 'friends' && styles.visibilityBadgeFriends,
+              profileVisibility.followedArtists === 'private' && styles.visibilityBadgePrivate,
+            ]}>
+              <Text style={styles.visibilityBadgeIcon}>
+                {visibilityLabels[profileVisibility.followedArtists].icon}
+              </Text>
+              <Text style={styles.visibilityBadgeText}>
+                {visibilityLabels[profileVisibility.followedArtists].label}
+              </Text>
+            </View>
+          </TouchableOpacity>
         </View>
 
         {/* Donnees */}
@@ -410,6 +574,62 @@ const styles = StyleSheet.create({
     ...typography.h3,
     color: colors.textPrimary,
     marginBottom: spacing.md,
+  },
+  sectionSubtitle: {
+    ...typography.bodySmall,
+    color: colors.textMuted,
+    marginBottom: spacing.md,
+    marginTop: -spacing.sm,
+  },
+  // Visibility items
+  visibilityItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  visibilityInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: spacing.md,
+  },
+  visibilityIcon: {
+    fontSize: 20,
+    marginRight: spacing.md,
+  },
+  visibilityText: {
+    flex: 1,
+  },
+  visibilityBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.full,
+    gap: spacing.xs,
+    minWidth: 90,
+    justifyContent: 'center',
+  },
+  visibilityBadgePublic: {
+    backgroundColor: colors.success,
+  },
+  visibilityBadgeFriends: {
+    backgroundColor: colors.primary,
+  },
+  visibilityBadgePrivate: {
+    backgroundColor: colors.surfaceLight,
+  },
+  visibilityBadgeIcon: {
+    fontSize: 12,
+  },
+  visibilityBadgeText: {
+    ...typography.caption,
+    color: colors.textPrimary,
+    fontWeight: '600',
   },
   settingItem: {
     flexDirection: 'row',

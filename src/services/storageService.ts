@@ -36,6 +36,8 @@ const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
   weeklyDigestTime: '18:00',
   friendActivity: true,
   concertReminders: true,
+  hotConcerts: true,
+  hotConcertThreshold: 3,
 };
 
 export const storageService = {

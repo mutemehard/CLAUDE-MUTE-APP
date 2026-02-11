@@ -24,6 +24,8 @@ export interface NotificationSettings {
   weeklyDigestTime: string; // HH:mm format
   friendActivity: boolean; // Notify when friends mark concerts
   concertReminders: boolean; // Remind before concerts you're going to
+  hotConcerts: boolean; // Notify when multiple friends are going (socially hot)
+  hotConcertThreshold: number; // Number of friends needed to trigger hot concert notification
 }
 
 const DEFAULT_SETTINGS: NotificationSettings = {
@@ -37,7 +39,12 @@ const DEFAULT_SETTINGS: NotificationSettings = {
   weeklyDigestTime: '18:00',
   friendActivity: true,
   concertReminders: true,
+  hotConcerts: true,
+  hotConcertThreshold: 3, // Default: 3 friends
 };
+
+// Seuil par defaut pour les concerts "chauds"
+const HOT_CONCERT_DEFAULT_THRESHOLD = 3;
 
 export const notificationService = {
   // Demande la permission pour les notifications
@@ -181,6 +188,63 @@ export const notificationService = {
       body: `${venueName} - ${formatDate(date)}. Tu veux les rejoindre ?`,
       data: { type: 'friends_concert', concertId },
     });
+  },
+
+  // Notification "Concert socialement chaud" (convergence sociale)
+  // Declenchee quand le seuil d'amis est atteint pour un concert
+  async notifyHotConcert(
+    friendNames: string[],
+    artistName: string,
+    venueName: string,
+    date: string,
+    concertId: string,
+    threshold: number = HOT_CONCERT_DEFAULT_THRESHOLD
+  ): Promise<void> {
+    const count = friendNames.length;
+
+    // Ne pas notifier si en dessous du seuil
+    if (count < threshold) {
+      return;
+    }
+
+    // Generer un message engageant selon le nombre d'amis
+    let emoji = '🔥';
+    let intensity = '';
+    if (count >= 5) {
+      emoji = '🔥🔥🔥';
+      intensity = 'ultra ';
+    } else if (count >= 4) {
+      emoji = '🔥🔥';
+      intensity = 'super ';
+    }
+
+    const names = count <= 3
+      ? friendNames.join(', ')
+      : `${friendNames.slice(0, 2).join(', ')} et ${count - 2} autres`;
+
+    await this.scheduleLocalNotification({
+      title: `${emoji} Concert ${intensity}chaud !`,
+      body: `${count} amis vont voir ${artistName} @ ${venueName}. ${names}`,
+      data: {
+        type: 'hot_concert',
+        concertId,
+        friendCount: count,
+        friendNames,
+      },
+    });
+  },
+
+  // Verifie si un concert est "chaud" (beaucoup d'amis y vont)
+  isHotConcert(friendsGoingCount: number, threshold: number = HOT_CONCERT_DEFAULT_THRESHOLD): boolean {
+    return friendsGoingCount >= threshold;
+  },
+
+  // Retourne le niveau de "chaleur" d'un concert (0-3)
+  getHotLevel(friendsGoingCount: number): number {
+    if (friendsGoingCount >= 5) return 3; // Ultra hot
+    if (friendsGoingCount >= 4) return 2; // Super hot
+    if (friendsGoingCount >= 3) return 1; // Hot
+    return 0; // Normal
   },
 
   // Notification de rappel avant un concert

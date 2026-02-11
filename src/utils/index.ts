@@ -33,3 +33,17 @@ export {
   warningNotification,
   selectionFeedback,
 } from './haptics';
+
+export {
+  requestContactsPermission,
+  getContacts,
+  searchContacts,
+  generateUserQRId,
+  generateFriendQRData,
+  parseFriendQRData,
+  isQRDataValid,
+  shareInviteLink,
+  contactToFriend,
+  isContactAlreadyFriend,
+} from './contacts';
+export type { ImportedContact, QRCodeData } from './contacts';

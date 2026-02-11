@@ -14,8 +14,21 @@ import {
   ParticipationStatus,
   Friend,
   FriendActivity,
+  ProfileVisibility,
+  ArtistStats,
+  FollowRequest,
+  IncomingFollowRequest,
+  Friendship,
 } from '../types';
 import { concertService } from '../services';
+
+// Visibilite par defaut du profil
+const defaultProfileVisibility: ProfileVisibility = {
+  score: 'friends',
+  history: 'friends',
+  activity: 'friends',
+  followedArtists: 'public',
+};
 
 interface AppState {
   // Donnees
@@ -25,11 +38,20 @@ interface AppState {
   attendedConcerts: AttendedConcert[];
   userLocation: UserLocation | null;
   preferredGenres: string[];
+  followedArtists: string[]; // IDs des artistes suivis
+
+  // Profile settings
+  profileVisibility: ProfileVisibility;
 
   // Social (Facebook Events style)
   participations: ConcertParticipation[];
   friends: Friend[];
   friendsActivity: FriendActivity[];
+
+  // Mutual Follow System (BeReal style)
+  outgoingFollowRequests: FollowRequest[];
+  incomingFollowRequests: IncomingFollowRequest[];
+  friendships: Friendship[];
 
   // UI State
   isLoading: boolean;
@@ -58,6 +80,7 @@ interface AppState {
   addAttendedConcert: (concert: AttendedConcert) => void;
   removeAttendedConcert: (concertId: string) => void;
   updateAttendedConcert: (concertId: string, updates: Partial<AttendedConcert>) => void;
+  getArtistStats: (artistName: string) => ArtistStats;
 
   // Actions - Location
   setUserLocation: (location: UserLocation | null) => void;
@@ -75,6 +98,14 @@ interface AppState {
   addPreferredGenre: (genre: string) => void;
   removePreferredGenre: (genre: string) => void;
 
+  // Actions - Follow Artists
+  followArtist: (artistId: string) => void;
+  unfollowArtist: (artistId: string) => void;
+  isFollowingArtist: (artistId: string) => boolean;
+
+  // Actions - Profile Visibility
+  setProfileVisibility: (visibility: Partial<ProfileVisibility>) => void;
+
   // Actions - Social (Participations)
   setParticipation: (concertId: string, status: ParticipationStatus, concertInfo: { artistName: string; venueName: string; date: string }) => void;
   getParticipation: (concertId: string) => ParticipationStatus;
@@ -84,6 +115,16 @@ interface AppState {
   addFriend: (friend: Friend) => void;
   removeFriend: (friendId: string) => void;
   getFriendsForConcert: (concertId: string) => { going: Friend[]; interested: Friend[] };
+
+  // Actions - Mutual Follow (BeReal style)
+  sendFollowRequest: (toUserId: string, toUserName: string, toUserAvatar?: string) => void;
+  cancelFollowRequest: (requestId: string) => void;
+  acceptFollowRequest: (requestId: string) => void;
+  declineFollowRequest: (requestId: string) => void;
+  removeFriendship: (friendshipId: string) => void;
+  getPendingRequestsCount: () => number;
+  isFriendWith: (userId: string) => boolean;
+  hasSentRequestTo: (userId: string) => boolean;
 
   // Actions - Hydration
   _hasHydrated: boolean;
@@ -106,9 +147,14 @@ export const useStore = create<AppState>()(
       attendedConcerts: [],
       userLocation: null,
       preferredGenres: [],
+      followedArtists: [],
+      profileVisibility: defaultProfileVisibility,
       participations: [],
       friends: [],
       friendsActivity: [],
+      outgoingFollowRequests: [],
+      incomingFollowRequests: [],
+      friendships: [],
       isLoading: false,
       error: null,
       filters: defaultFilters,
@@ -282,6 +328,65 @@ export const useStore = create<AppState>()(
         }));
       },
 
+      // === Follow Artists ===
+
+      followArtist: (artistId) => {
+        set(state => ({
+          followedArtists: state.followedArtists.includes(artistId)
+            ? state.followedArtists
+            : [...state.followedArtists, artistId]
+        }));
+      },
+
+      unfollowArtist: (artistId) => {
+        set(state => ({
+          followedArtists: state.followedArtists.filter(id => id !== artistId)
+        }));
+      },
+
+      isFollowingArtist: (artistId) => {
+        return get().followedArtists.includes(artistId);
+      },
+
+      // === Profile Visibility ===
+
+      setProfileVisibility: (visibility) => {
+        set(state => ({
+          profileVisibility: { ...state.profileVisibility, ...visibility }
+        }));
+      },
+
+      // === Artist Stats (calculated from attendedConcerts) ===
+
+      getArtistStats: (artistName) => {
+        const concerts = get().attendedConcerts.filter(
+          c => c.artistName.toLowerCase() === artistName.toLowerCase()
+        );
+
+        if (concerts.length === 0) {
+          return {
+            artistId: '',
+            artistName,
+            seenCount: 0,
+            venues: [],
+            totalScore: 0,
+          };
+        }
+
+        const sortedByDate = [...concerts].sort((a, b) => a.date.localeCompare(b.date));
+        const venues = [...new Set(concerts.map(c => c.venueName))];
+
+        return {
+          artistId: concerts[0].concertId.split('_')[0] || '',
+          artistName,
+          seenCount: concerts.length,
+          firstSeen: sortedByDate[0].date,
+          lastSeen: sortedByDate[sortedByDate.length - 1].date,
+          venues,
+          totalScore: concerts.reduce((sum, c) => sum + (c.rating || 0), 0),
+        };
+      },
+
       // === Social Actions (Facebook Events style) ===
 
       // Definir la participation a un concert (Going/Interested)
@@ -366,6 +471,101 @@ export const useStore = create<AppState>()(
 
         return { going, interested };
       },
+
+      // === Mutual Follow System (BeReal style) ===
+
+      // Envoyer une demande de suivi
+      sendFollowRequest: (toUserId, toUserName, toUserAvatar) => {
+        const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const request: FollowRequest = {
+          id: requestId,
+          fromUserId: 'current_user', // En production: ID de l'utilisateur connecte
+          toUserId,
+          toUserName,
+          toUserAvatar,
+          status: 'pending',
+          createdAt: new Date().toISOString(),
+        };
+        set(state => ({
+          outgoingFollowRequests: [...state.outgoingFollowRequests, request]
+        }));
+      },
+
+      // Annuler une demande envoyee
+      cancelFollowRequest: (requestId) => {
+        set(state => ({
+          outgoingFollowRequests: state.outgoingFollowRequests.filter(r => r.id !== requestId)
+        }));
+      },
+
+      // Accepter une demande recue (cree une amitie mutuelle)
+      acceptFollowRequest: (requestId) => {
+        const request = get().incomingFollowRequests.find(r => r.id === requestId);
+        if (!request) return;
+
+        const friendshipId = `friendship_${Date.now()}`;
+        const now = new Date().toISOString();
+
+        // Creer l'amitie
+        const friendship: Friendship = {
+          id: friendshipId,
+          friendId: request.fromUserId,
+          friendName: request.fromUserName,
+          friendAvatar: request.fromUserAvatar,
+          createdAt: now,
+          mutualSince: now,
+        };
+
+        // Aussi ajouter comme Friend (pour compatibilite avec le systeme existant)
+        const friend: Friend = {
+          id: request.fromUserId,
+          displayName: request.fromUserName,
+          avatarUrl: request.fromUserAvatar,
+          addedAt: now,
+        };
+
+        set(state => ({
+          incomingFollowRequests: state.incomingFollowRequests.filter(r => r.id !== requestId),
+          friendships: [...state.friendships, friendship],
+          friends: [...state.friends, friend],
+        }));
+      },
+
+      // Refuser une demande recue
+      declineFollowRequest: (requestId) => {
+        set(state => ({
+          incomingFollowRequests: state.incomingFollowRequests.filter(r => r.id !== requestId)
+        }));
+      },
+
+      // Supprimer une amitie
+      removeFriendship: (friendshipId) => {
+        const friendship = get().friendships.find(f => f.id === friendshipId);
+        if (!friendship) return;
+
+        set(state => ({
+          friendships: state.friendships.filter(f => f.id !== friendshipId),
+          friends: state.friends.filter(f => f.id !== friendship.friendId),
+          friendsActivity: state.friendsActivity.filter(a => a.friendId !== friendship.friendId),
+        }));
+      },
+
+      // Compter les demandes en attente
+      getPendingRequestsCount: () => {
+        return get().incomingFollowRequests.length;
+      },
+
+      // Verifier si on est ami avec quelqu'un
+      isFriendWith: (userId) => {
+        return get().friendships.some(f => f.friendId === userId);
+      },
+
+      // Verifier si on a deja envoye une demande
+      hasSentRequestTo: (userId) => {
+        return get().outgoingFollowRequests.some(
+          r => r.toUserId === userId && r.status === 'pending'
+        );
+      },
     }),
     {
       name: 'mute-storage',
@@ -378,10 +578,18 @@ export const useStore = create<AppState>()(
         recentSearches: state.recentSearches,
         preferredGenres: state.preferredGenres,
         onboardingCompleted: state.onboardingCompleted,
+        // Artists
+        followedArtists: state.followedArtists,
+        // Profile settings
+        profileVisibility: state.profileVisibility,
         // Social data
         participations: state.participations,
         friends: state.friends,
         friendsActivity: state.friendsActivity,
+        // Mutual follow data
+        outgoingFollowRequests: state.outgoingFollowRequests,
+        incomingFollowRequests: state.incomingFollowRequests,
+        friendships: state.friendships,
       }),
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true);

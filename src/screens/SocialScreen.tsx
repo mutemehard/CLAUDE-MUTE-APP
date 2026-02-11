@@ -15,13 +15,21 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, typography, borderRadius, APP_CONFIG } from '../constants';
-import { RootStackParamList, Friend, FriendActivity, ConcertParticipation } from '../types';
+import { RootStackParamList, Friend, FriendActivity, ConcertParticipation, IncomingFollowRequest, Friendship } from '../types';
 import { useStore } from '../hooks';
-import { haptics, shareApp } from '../utils';
+import {
+  haptics,
+  shareApp,
+  getContacts,
+  shareInviteLink,
+  generateFriendQRData,
+  generateUserQRId,
+  ImportedContact,
+} from '../utils';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-type SocialTab = 'activity' | 'friends' | 'discover';
+type SocialTab = 'activity' | 'friends' | 'requests' | 'discover';
 
 // Mock suggested friends pour demo
 const mockSuggestedFriends: Friend[] = [
@@ -84,12 +92,34 @@ export const SocialScreen: React.FC = () => {
     addFriend,
     removeFriend,
     getUpcomingParticipations,
+    // Mutual follow system
+    friendships,
+    incomingFollowRequests,
+    outgoingFollowRequests,
+    sendFollowRequest,
+    cancelFollowRequest,
+    acceptFollowRequest,
+    declineFollowRequest,
+    removeFriendship,
+    getPendingRequestsCount,
+    isFriendWith,
+    hasSentRequestTo,
   } = useStore();
 
   const [activeTab, setActiveTab] = useState<SocialTab>('activity');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showContactsModal, setShowContactsModal] = useState(false);
+  const [showQRModal, setShowQRModal] = useState(false);
   const [newFriendName, setNewFriendName] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [importedContacts, setImportedContacts] = useState<ImportedContact[]>([]);
+  const [isLoadingContacts, setIsLoadingContacts] = useState(false);
+
+  // Count pending requests
+  const pendingRequestsCount = incomingFollowRequests.length;
+
+  // User QR ID (would be stored in user profile in production)
+  const userQRId = 'USER_' + Date.now().toString(36);
 
   // Combine mock et vraies activites
   const allActivities = useMemo(() => {
@@ -130,16 +160,83 @@ export const SocialScreen: React.FC = () => {
       return;
     }
 
-    const friend: Friend = {
-      id: Date.now().toString(),
-      displayName: newFriendName.trim(),
-      addedAt: new Date().toISOString(),
-    };
-
+    // Envoyer une demande de suivi au lieu d'ajouter directement
+    const userId = `user_${Date.now()}`;
     haptics.success();
-    addFriend(friend);
+    sendFollowRequest(userId, newFriendName.trim());
+    Alert.alert(
+      'Demande envoyee',
+      `Une demande a ete envoyee a ${newFriendName.trim()}`,
+      [{ text: 'OK' }]
+    );
     setNewFriendName('');
     setShowAddModal(false);
+  };
+
+  const handleAcceptRequest = (request: IncomingFollowRequest) => {
+    haptics.success();
+    acceptFollowRequest(request.id);
+    Alert.alert(
+      'Ami ajoute',
+      `${request.fromUserName} est maintenant ton ami !`,
+      [{ text: 'Super !' }]
+    );
+  };
+
+  const handleDeclineRequest = (request: IncomingFollowRequest) => {
+    haptics.light();
+    declineFollowRequest(request.id);
+  };
+
+  const handleRemoveFriendship = (friendship: Friendship) => {
+    haptics.warning();
+    Alert.alert(
+      'Retirer cet ami ?',
+      `${friendship.friendName} ne verra plus tes concerts`,
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Retirer',
+          style: 'destructive',
+          onPress: () => {
+            haptics.medium();
+            removeFriendship(friendship.id);
+          },
+        },
+      ]
+    );
+  };
+
+  const handleImportContacts = async () => {
+    setIsLoadingContacts(true);
+    try {
+      const contacts = await getContacts();
+      setImportedContacts(contacts);
+      if (contacts.length > 0) {
+        setShowContactsModal(true);
+      } else {
+        Alert.alert('Aucun contact', 'Impossible de recuperer les contacts.');
+      }
+    } catch (error) {
+      Alert.alert('Erreur', 'Impossible d\'acceder aux contacts.');
+    }
+    setIsLoadingContacts(false);
+  };
+
+  const handleInviteContact = (contact: ImportedContact) => {
+    haptics.light();
+    // Envoyer une demande de suivi
+    sendFollowRequest(contact.id, contact.name);
+    Alert.alert(
+      'Demande envoyee',
+      `Une demande a ete envoyee a ${contact.name}`,
+      [{ text: 'OK' }]
+    );
+  };
+
+  const handleShareQR = async () => {
+    haptics.light();
+    await shareInviteLink('MonPseudo');
   };
 
   const handleRemoveFriend = (friend: Friend) => {
@@ -339,12 +436,17 @@ export const SocialScreen: React.FC = () => {
         <View style={styles.tabs}>
           {[
             { id: 'activity', label: 'Activite', icon: '📣' },
-            { id: 'friends', label: 'Amis', icon: '👥', count: friends.length },
+            { id: 'friends', label: 'Amis', icon: '👥', count: friendships.length || friends.length },
+            { id: 'requests', label: 'Demandes', icon: '🔔', count: pendingRequestsCount, highlight: pendingRequestsCount > 0 },
             { id: 'discover', label: 'Decouvrir', icon: '🔍' },
           ].map(tab => (
             <TouchableOpacity
               key={tab.id}
-              style={[styles.tab, activeTab === tab.id && styles.tabActive]}
+              style={[
+                styles.tab,
+                activeTab === tab.id && styles.tabActive,
+                (tab as any).highlight && styles.tabHighlight,
+              ]}
               onPress={() => {
                 haptics.selection();
                 setActiveTab(tab.id as SocialTab);
@@ -355,8 +457,14 @@ export const SocialScreen: React.FC = () => {
                 {tab.label}
               </Text>
               {tab.count !== undefined && tab.count > 0 && (
-                <View style={styles.tabBadge}>
-                  <Text style={styles.tabBadgeText}>{tab.count}</Text>
+                <View style={[
+                  styles.tabBadge,
+                  (tab as any).highlight && styles.tabBadgeHighlight,
+                ]}>
+                  <Text style={[
+                    styles.tabBadgeText,
+                    (tab as any).highlight && styles.tabBadgeTextHighlight,
+                  ]}>{tab.count}</Text>
                 </View>
               )}
             </TouchableOpacity>
@@ -407,30 +515,175 @@ export const SocialScreen: React.FC = () => {
               />
             </View>
 
-            {/* Friends list */}
+            {/* Friendships (mutual follow) */}
+            {friendships.length > 0 && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>
+                  Amis mutuels ({friendships.length})
+                </Text>
+                {friendships
+                  .filter(f => f.friendName.toLowerCase().includes(searchQuery.toLowerCase()))
+                  .map(friendship => (
+                    <View key={friendship.id} style={styles.friendItem}>
+                      <View style={styles.friendAvatar}>
+                        {friendship.friendAvatar ? (
+                          <Image source={{ uri: friendship.friendAvatar }} style={styles.friendAvatarImage} />
+                        ) : (
+                          <Text style={styles.friendAvatarText}>
+                            {friendship.friendName.charAt(0)}
+                          </Text>
+                        )}
+                        <View style={styles.mutualBadge}>
+                          <Text style={styles.mutualBadgeIcon}>🤝</Text>
+                        </View>
+                      </View>
+                      <View style={styles.friendInfo}>
+                        <Text style={styles.friendName}>{friendship.friendName}</Text>
+                        <Text style={styles.friendSince}>
+                          Amis mutuels depuis {new Date(friendship.mutualSince).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' })}
+                        </Text>
+                      </View>
+                      <TouchableOpacity
+                        style={styles.removeFriendButton}
+                        onPress={() => handleRemoveFriendship(friendship)}
+                      >
+                        <Text style={styles.removeFriendIcon}>✕</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+              </View>
+            )}
+
+            {/* Legacy friends list (for backward compatibility) */}
+            {friends.length > 0 && friendships.length === 0 && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>
+                  Mes amis ({friends.length})
+                </Text>
+                {filteredFriends.length > 0 ? (
+                  filteredFriends.map(f => renderFriendItem(f))
+                ) : (
+                  <Text style={styles.noResults}>Aucun resultat pour "{searchQuery}"</Text>
+                )}
+              </View>
+            )}
+
+            {/* Empty state */}
+            {friends.length === 0 && friendships.length === 0 && (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyIcon}>👥</Text>
+                <Text style={styles.emptyText}>Pas encore d'amis</Text>
+                <Text style={styles.emptySubtext}>
+                  Ajoute des amis pour partager tes concerts
+                </Text>
+                <TouchableOpacity
+                  style={styles.emptyButton}
+                  onPress={() => setShowAddModal(true)}
+                >
+                  <Text style={styles.emptyButtonText}>Ajouter un ami</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Pending outgoing requests */}
+            {outgoingFollowRequests.filter(r => r.status === 'pending').length > 0 && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Demandes envoyees</Text>
+                {outgoingFollowRequests
+                  .filter(r => r.status === 'pending')
+                  .map(request => (
+                    <View key={request.id} style={styles.friendItem}>
+                      <View style={styles.friendAvatar}>
+                        {request.toUserAvatar ? (
+                          <Image source={{ uri: request.toUserAvatar }} style={styles.friendAvatarImage} />
+                        ) : (
+                          <Text style={styles.friendAvatarText}>
+                            {request.toUserName.charAt(0)}
+                          </Text>
+                        )}
+                      </View>
+                      <View style={styles.friendInfo}>
+                        <Text style={styles.friendName}>{request.toUserName}</Text>
+                        <Text style={styles.friendSince}>En attente de reponse...</Text>
+                      </View>
+                      <TouchableOpacity
+                        style={styles.cancelRequestButton}
+                        onPress={() => {
+                          haptics.light();
+                          cancelFollowRequest(request.id);
+                        }}
+                      >
+                        <Text style={styles.cancelRequestText}>Annuler</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Requests Tab */}
+        {activeTab === 'requests' && (
+          <View style={styles.tabContent}>
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>
-                Mes amis ({friends.length})
+                Demandes recues ({incomingFollowRequests.length})
               </Text>
-              {filteredFriends.length > 0 ? (
-                filteredFriends.map(f => renderFriendItem(f))
-              ) : friends.length === 0 ? (
-                <View style={styles.emptyState}>
-                  <Text style={styles.emptyIcon}>👥</Text>
-                  <Text style={styles.emptyText}>Pas encore d'amis</Text>
-                  <Text style={styles.emptySubtext}>
-                    Ajoute des amis pour partager tes concerts
-                  </Text>
-                  <TouchableOpacity
-                    style={styles.emptyButton}
-                    onPress={() => setShowAddModal(true)}
-                  >
-                    <Text style={styles.emptyButtonText}>Ajouter un ami</Text>
-                  </TouchableOpacity>
-                </View>
+              {incomingFollowRequests.length > 0 ? (
+                incomingFollowRequests.map(request => (
+                  <View key={request.id} style={styles.requestItem}>
+                    <View style={styles.friendAvatar}>
+                      {request.fromUserAvatar ? (
+                        <Image source={{ uri: request.fromUserAvatar }} style={styles.friendAvatarImage} />
+                      ) : (
+                        <Text style={styles.friendAvatarText}>
+                          {request.fromUserName.charAt(0)}
+                        </Text>
+                      )}
+                    </View>
+                    <View style={styles.friendInfo}>
+                      <Text style={styles.friendName}>{request.fromUserName}</Text>
+                      <Text style={styles.requestTime}>
+                        {new Date(request.createdAt).toLocaleDateString('fr-FR')}
+                      </Text>
+                    </View>
+                    <View style={styles.requestActions}>
+                      <TouchableOpacity
+                        style={styles.acceptButton}
+                        onPress={() => handleAcceptRequest(request)}
+                      >
+                        <Text style={styles.acceptButtonText}>Accepter</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.declineButton}
+                        onPress={() => handleDeclineRequest(request)}
+                      >
+                        <Text style={styles.declineButtonText}>✕</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))
               ) : (
-                <Text style={styles.noResults}>Aucun resultat pour "{searchQuery}"</Text>
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyIcon}>📭</Text>
+                  <Text style={styles.emptyText}>Aucune demande</Text>
+                  <Text style={styles.emptySubtext}>
+                    Les demandes d'amis apparaitront ici
+                  </Text>
+                </View>
               )}
+            </View>
+
+            {/* Explanation */}
+            <View style={styles.infoCard}>
+              <Text style={styles.infoIcon}>ℹ️</Text>
+              <View style={styles.infoContent}>
+                <Text style={styles.infoTitle}>Follow mutuel</Text>
+                <Text style={styles.infoText}>
+                  Comme sur BeReal, tu dois accepter les demandes pour devenir amis.
+                  Tes amis pourront voir tes concerts.
+                </Text>
+              </View>
             </View>
           </View>
         )}
@@ -438,6 +691,36 @@ export const SocialScreen: React.FC = () => {
         {/* Discover Tab */}
         {activeTab === 'discover' && (
           <View style={styles.tabContent}>
+            {/* Import contacts */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Ajouter des amis</Text>
+
+              <View style={styles.addMethodsGrid}>
+                <TouchableOpacity
+                  style={styles.addMethodCard}
+                  onPress={handleImportContacts}
+                  disabled={isLoadingContacts}
+                >
+                  <Text style={styles.addMethodIcon}>📱</Text>
+                  <Text style={styles.addMethodTitle}>Contacts</Text>
+                  <Text style={styles.addMethodDesc}>
+                    Importer depuis ton telephone
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.addMethodCard}
+                  onPress={() => setShowQRModal(true)}
+                >
+                  <Text style={styles.addMethodIcon}>📷</Text>
+                  <Text style={styles.addMethodTitle}>QR Code</Text>
+                  <Text style={styles.addMethodDesc}>
+                    Scanner ou partager
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Suggestions</Text>
               <Text style={styles.sectionSubtitle}>
@@ -506,6 +789,102 @@ export const SocialScreen: React.FC = () => {
                 <Text style={styles.modalConfirmText}>Ajouter</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Contacts Modal */}
+      <Modal
+        visible={showContactsModal}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowContactsModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, styles.contactsModalContent]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Tes contacts ({importedContacts.length})</Text>
+              <TouchableOpacity onPress={() => setShowContactsModal(false)}>
+                <Text style={styles.modalCloseIcon}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <FlatList
+              data={importedContacts}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <View style={styles.contactItem}>
+                  <View style={styles.contactAvatar}>
+                    <Text style={styles.contactAvatarText}>{item.name.charAt(0)}</Text>
+                  </View>
+                  <View style={styles.contactInfo}>
+                    <Text style={styles.contactName}>{item.name}</Text>
+                    {item.phoneNumber && (
+                      <Text style={styles.contactDetail}>{item.phoneNumber}</Text>
+                    )}
+                  </View>
+                  <TouchableOpacity
+                    style={styles.inviteContactButton}
+                    onPress={() => handleInviteContact(item)}
+                  >
+                    <Text style={styles.inviteContactText}>Inviter</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+              style={styles.contactsList}
+              showsVerticalScrollIndicator={false}
+            />
+          </View>
+        </View>
+      </Modal>
+
+      {/* QR Code Modal */}
+      <Modal
+        visible={showQRModal}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowQRModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>QR Code</Text>
+              <TouchableOpacity onPress={() => setShowQRModal(false)}>
+                <Text style={styles.modalCloseIcon}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.qrContainer}>
+              <View style={styles.qrPlaceholder}>
+                <Text style={styles.qrPlaceholderIcon}>📱</Text>
+                <Text style={styles.qrPlaceholderText}>
+                  Scanner le QR code d'un ami pour l'ajouter
+                </Text>
+              </View>
+
+              <View style={styles.qrDivider}>
+                <View style={styles.qrDividerLine} />
+                <Text style={styles.qrDividerText}>ou</Text>
+                <View style={styles.qrDividerLine} />
+              </View>
+
+              <View style={styles.myQrSection}>
+                <View style={styles.myQrCode}>
+                  <Text style={styles.myQrIcon}>📲</Text>
+                  <Text style={styles.myQrText}>Mon QR Code</Text>
+                </View>
+                <Text style={styles.myQrHint}>
+                  Un ami peut scanner ce code pour t'ajouter
+                </Text>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.shareQrButton}
+              onPress={handleShareQR}
+            >
+              <Text style={styles.shareQrButtonText}>Partager mon lien</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -761,6 +1140,113 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textMuted,
   },
+  mutualBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: colors.success,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.surface,
+  },
+  mutualBadgeIcon: {
+    fontSize: 8,
+  },
+  cancelRequestButton: {
+    backgroundColor: colors.surfaceLight,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.lg,
+  },
+  cancelRequestText: {
+    ...typography.caption,
+    color: colors.textMuted,
+  },
+  // Request items
+  requestItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    gap: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  requestTime: {
+    ...typography.caption,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  requestActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  acceptButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.lg,
+  },
+  acceptButtonText: {
+    ...typography.caption,
+    color: colors.textPrimary,
+    fontWeight: '600',
+  },
+  declineButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.surfaceLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  declineButtonText: {
+    fontSize: 14,
+    color: colors.textMuted,
+  },
+  // Tab highlight
+  tabHighlight: {
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  tabBadgeHighlight: {
+    backgroundColor: colors.primary,
+  },
+  tabBadgeTextHighlight: {
+    color: colors.textPrimary,
+  },
+  // Info card
+  infoCard: {
+    flexDirection: 'row',
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    gap: spacing.md,
+    marginTop: spacing.md,
+  },
+  infoIcon: {
+    fontSize: 24,
+  },
+  infoContent: {
+    flex: 1,
+  },
+  infoTitle: {
+    ...typography.body,
+    color: colors.textPrimary,
+    fontWeight: '600',
+    marginBottom: spacing.xs,
+  },
+  infoText: {
+    ...typography.bodySmall,
+    color: colors.textMuted,
+    lineHeight: 18,
+  },
   // Concerts with friends
   concertWithFriends: {
     flexDirection: 'row',
@@ -972,6 +1458,173 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalConfirmText: {
+    ...typography.body,
+    color: colors.textPrimary,
+    fontWeight: '600',
+  },
+  // Add methods grid
+  addMethodsGrid: {
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
+  addMethodCard: {
+    flex: 1,
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    alignItems: 'center',
+  },
+  addMethodIcon: {
+    fontSize: 32,
+    marginBottom: spacing.sm,
+  },
+  addMethodTitle: {
+    ...typography.body,
+    color: colors.textPrimary,
+    fontWeight: '600',
+    marginBottom: spacing.xs,
+  },
+  addMethodDesc: {
+    ...typography.caption,
+    color: colors.textMuted,
+    textAlign: 'center',
+  },
+  // Contacts modal
+  contactsModalContent: {
+    maxHeight: '70%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  modalCloseIcon: {
+    fontSize: 24,
+    color: colors.textMuted,
+    padding: spacing.sm,
+  },
+  contactsList: {
+    maxHeight: 400,
+  },
+  contactItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.surfaceLight,
+    gap: spacing.md,
+  },
+  contactAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  contactAvatarText: {
+    fontSize: 16,
+    color: colors.textPrimary,
+    fontWeight: '600',
+  },
+  contactInfo: {
+    flex: 1,
+  },
+  contactName: {
+    ...typography.body,
+    color: colors.textPrimary,
+  },
+  contactDetail: {
+    ...typography.caption,
+    color: colors.textMuted,
+  },
+  inviteContactButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.lg,
+  },
+  inviteContactText: {
+    ...typography.caption,
+    color: colors.textPrimary,
+    fontWeight: '600',
+  },
+  // QR Code modal
+  qrContainer: {
+    alignItems: 'center',
+    paddingVertical: spacing.lg,
+  },
+  qrPlaceholder: {
+    width: 200,
+    height: 200,
+    backgroundColor: colors.surfaceLight,
+    borderRadius: borderRadius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.lg,
+    borderWidth: 2,
+    borderColor: colors.primary,
+    borderStyle: 'dashed',
+  },
+  qrPlaceholderIcon: {
+    fontSize: 48,
+    marginBottom: spacing.md,
+  },
+  qrPlaceholderText: {
+    ...typography.bodySmall,
+    color: colors.textMuted,
+    textAlign: 'center',
+  },
+  qrDivider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    marginVertical: spacing.lg,
+  },
+  qrDividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: colors.surfaceLight,
+  },
+  qrDividerText: {
+    ...typography.bodySmall,
+    color: colors.textMuted,
+    paddingHorizontal: spacing.md,
+  },
+  myQrSection: {
+    alignItems: 'center',
+  },
+  myQrCode: {
+    width: 150,
+    height: 150,
+    backgroundColor: colors.textPrimary,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.sm,
+  },
+  myQrIcon: {
+    fontSize: 48,
+  },
+  myQrText: {
+    ...typography.caption,
+    color: colors.background,
+    marginTop: spacing.xs,
+  },
+  myQrHint: {
+    ...typography.caption,
+    color: colors.textMuted,
+    textAlign: 'center',
+  },
+  shareQrButton: {
+    backgroundColor: colors.primary,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.lg,
+    alignItems: 'center',
+    marginTop: spacing.md,
+  },
+  shareQrButtonText: {
     ...typography.body,
     color: colors.textPrimary,
     fontWeight: '600',

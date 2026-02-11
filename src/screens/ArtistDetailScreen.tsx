@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -15,9 +15,9 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ConcertCard } from '../components/ConcertCard';
 import { useStore } from '../hooks';
 import { artistService, concertService } from '../services';
-import { shareArtist } from '../utils';
+import { shareArtist, haptics } from '../utils';
 import { colors, spacing, typography, borderRadius } from '../constants';
-import { RootStackParamList, Artist, Concert } from '../types';
+import { RootStackParamList, Artist, Concert, ArtistStats } from '../types';
 
 type RouteProps = RouteProp<RootStackParamList, 'ArtistDetail'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -26,11 +26,28 @@ export const ArtistDetailScreen: React.FC = () => {
   const route = useRoute<RouteProps>();
   const navigation = useNavigation<NavigationProp>();
   const { artistId } = route.params;
-  const { isFavorite, addFavorite, removeFavorite } = useStore();
+  const {
+    isFavorite,
+    addFavorite,
+    removeFavorite,
+    followArtist,
+    unfollowArtist,
+    isFollowingArtist,
+    getArtistStats,
+  } = useStore();
 
   const [artist, setArtist] = useState<Artist | null>(null);
   const [concerts, setConcerts] = useState<Concert[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Check if following this artist
+  const isFollowing = artist ? isFollowingArtist(artist.id) : false;
+
+  // Get stats for this artist (how many times seen)
+  const artistStats: ArtistStats | null = useMemo(() => {
+    if (!artist) return null;
+    return getArtistStats(artist.name);
+  }, [artist, getArtistStats]);
 
   useEffect(() => {
     loadArtist();
@@ -49,10 +66,21 @@ export const ArtistDetailScreen: React.FC = () => {
 
   const handleFavorite = () => {
     if (!artist) return;
+    haptics.light();
     if (isFavorite('artist', artist.id)) {
       removeFavorite('artist', artist.id);
     } else {
       addFavorite('artist', artist.id);
+    }
+  };
+
+  const handleFollow = () => {
+    if (!artist) return;
+    haptics.medium();
+    if (isFollowing) {
+      unfollowArtist(artist.id);
+    } else {
+      followArtist(artist.id);
     }
   };
 
@@ -163,6 +191,34 @@ export const ArtistDetailScreen: React.FC = () => {
             </View>
           )}
 
+          {/* Artist Stats - Show if user has seen this artist */}
+          {artistStats && artistStats.seenCount > 0 && (
+            <View style={styles.statsSection}>
+              <View style={styles.statsCard}>
+                <Text style={styles.statsEmoji}>🎤</Text>
+                <View style={styles.statsContent}>
+                  <Text style={styles.statsTitle}>
+                    Vu {artistStats.seenCount} fois
+                  </Text>
+                  <Text style={styles.statsSubtitle}>
+                    {artistStats.venues.length > 1
+                      ? `Dans ${artistStats.venues.length} salles differentes`
+                      : artistStats.venues[0] || ''}
+                  </Text>
+                  {artistStats.lastSeen && (
+                    <Text style={styles.statsDate}>
+                      Dernier concert: {new Date(artistStats.lastSeen).toLocaleDateString('fr-FR', {
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric',
+                      })}
+                    </Text>
+                  )}
+                </View>
+              </View>
+            </View>
+          )}
+
           {/* Description */}
           {artist.description && (
             <View style={styles.descriptionSection}>
@@ -234,12 +290,12 @@ export const ArtistDetailScreen: React.FC = () => {
       {/* Bottom CTA */}
       <View style={styles.bottomCTA}>
         <TouchableOpacity
-          style={[styles.followButton, favorite && styles.followButtonActive]}
-          onPress={handleFavorite}
+          style={[styles.followButton, isFollowing && styles.followButtonActive]}
+          onPress={handleFollow}
         >
-          <Text style={styles.followButtonIcon}>{favorite ? '❤️' : '🤍'}</Text>
-          <Text style={[styles.followButtonText, favorite && styles.followButtonTextActive]}>
-            {favorite ? 'Artiste suivi' : 'Suivre cet artiste'}
+          <Text style={styles.followButtonIcon}>{isFollowing ? '🔔' : '🔕'}</Text>
+          <Text style={[styles.followButtonText, isFollowing && styles.followButtonTextActive]}>
+            {isFollowing ? 'Notifications activees' : 'Suivre cet artiste'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -375,6 +431,40 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     width: 40,
     textAlign: 'right',
+  },
+  statsSection: {
+    marginBottom: spacing.lg,
+  },
+  statsCard: {
+    flexDirection: 'row',
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  statsEmoji: {
+    fontSize: 32,
+    marginRight: spacing.md,
+  },
+  statsContent: {
+    flex: 1,
+  },
+  statsTitle: {
+    ...typography.h3,
+    color: colors.primary,
+    marginBottom: spacing.xs / 2,
+  },
+  statsSubtitle: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+  },
+  statsDate: {
+    ...typography.bodySmall,
+    color: colors.textMuted,
+    marginTop: spacing.xs / 2,
+    fontStyle: 'italic',
   },
   descriptionSection: {
     marginBottom: spacing.lg,
