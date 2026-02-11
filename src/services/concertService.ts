@@ -1,9 +1,13 @@
 // Service pour gerer les donnees de concerts avec support multi-API
-// Sources: Bandsintown, Ticketmaster, OpenAgenda
+// Sources: Bandsintown, Ticketmaster, OpenAgenda, Resident Advisor, Shotgun, Dice, Paris Venues
 import { Concert, ConcertFilters, Artist, Venue } from '../types';
 import { bandsintownApi } from './api/bandsintown';
 import { ticketmasterApi } from './api/ticketmaster';
 import { openagendaApi } from './api/openagenda';
+import { residentAdvisorApi } from './api/residentAdvisor';
+import { shotgunApi } from './api/shotgun';
+import { diceApi } from './api/dice';
+import { parisVenuesApi } from './api/parisVenues';
 import { API_CONFIG } from '../config/api';
 
 // Configuration
@@ -141,18 +145,84 @@ const filterConcerts = (concerts: Concert[], filters: ConcertFilters): Concert[]
   return result;
 };
 
-// Fusionne les concerts de differentes sources et supprime les doublons
+// Normalise une chaine pour la comparaison (retire accents, ponctuation, espaces)
+const normalizeString = (str: string): string => {
+  return str
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Retire les accents
+    .replace(/[^\w\s]/g, '') // Retire la ponctuation
+    .replace(/\s+/g, ' ') // Normalise les espaces
+    .trim();
+};
+
+// Calcule un score de similarite entre deux chaines (0-1)
+const stringSimilarity = (str1: string, str2: string): number => {
+  const s1 = normalizeString(str1);
+  const s2 = normalizeString(str2);
+
+  if (s1 === s2) return 1;
+  if (s1.includes(s2) || s2.includes(s1)) return 0.9;
+
+  // Levenshtein simplifie pour les cas courants
+  const words1 = s1.split(' ');
+  const words2 = s2.split(' ');
+  const commonWords = words1.filter(w => words2.includes(w)).length;
+  const maxWords = Math.max(words1.length, words2.length);
+
+  return commonWords / maxWords;
+};
+
+// Verifie si deux concerts sont probablement le meme evenement
+const areSameConcert = (a: Concert, b: Concert): boolean => {
+  // Meme date obligatoire
+  if (a.date !== b.date) return false;
+
+  // Similarite artiste
+  const artistSimilarity = stringSimilarity(a.artist.name, b.artist.name);
+  if (artistSimilarity < 0.6) return false;
+
+  // Similarite venue
+  const venueSimilarity = stringSimilarity(a.venue.name, b.venue.name);
+  if (venueSimilarity < 0.5) return false;
+
+  // Si artiste ET venue sont tres similaires, c'est probablement le meme
+  return artistSimilarity >= 0.8 || venueSimilarity >= 0.8;
+};
+
+// Priorite des sources (plus haut = plus fiable)
+const SOURCE_PRIORITY: Record<string, number> = {
+  ticketmaster: 10,
+  bandsintown: 9,
+  venue: 8,
+  dice: 7,
+  shotgun: 6,
+  residentadvisor: 5,
+  openagenda: 4,
+  mock: 1,
+};
+
+// Fusionne les concerts de differentes sources et supprime les doublons intelligemment
 const mergeConcerts = (concertArrays: Concert[][]): Concert[] => {
   const allConcerts = concertArrays.flat();
-  const seen = new Set<string>();
 
-  return allConcerts.filter(concert => {
-    // Cree une cle unique basee sur artiste + venue + date
-    const key = `${concert.artist.name.toLowerCase()}_${concert.venue.name.toLowerCase()}_${concert.date}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
+  // Tri par priorite de source (pour garder les plus fiables)
+  allConcerts.sort((a, b) => {
+    const priorityA = SOURCE_PRIORITY[a.source || 'mock'] || 0;
+    const priorityB = SOURCE_PRIORITY[b.source || 'mock'] || 0;
+    return priorityB - priorityA;
   });
+
+  const uniqueConcerts: Concert[] = [];
+
+  for (const concert of allConcerts) {
+    const isDuplicate = uniqueConcerts.some(existing => areSameConcert(existing, concert));
+    if (!isDuplicate) {
+      uniqueConcerts.push(concert);
+    }
+  }
+
+  return uniqueConcerts;
 };
 
 // Artistes populaires a rechercher sur Bandsintown (concerts a Paris)
@@ -219,75 +289,131 @@ export const concertService = {
   async fetchFromApis(): Promise<Concert[]> {
     const allConcerts: Concert[][] = [];
     const errors: string[] = [];
+    const startTime = Date.now();
 
-    console.log('[MUTE] Fetching concerts from APIs...');
+    console.log('[MUTE] Fetching concerts from all sources...');
 
-    // 1. Ticketmaster - meilleure source pour les concerts (si cle configuree)
+    // Fetch en parallele depuis toutes les sources
+    const fetchPromises: Promise<{ source: string; concerts: Concert[] }>[] = [];
+
+    // 1. Ticketmaster - billetterie officielle
     if (API_CONFIG.ticketmaster?.enabled && API_CONFIG.ticketmaster?.apiKey) {
-      try {
-        console.log('[MUTE] Fetching from Ticketmaster...');
-        const tmConcerts = await ticketmasterApi.getConcertsInParis({ size: 200 });
-        if (tmConcerts.length > 0) {
-          allConcerts.push(tmConcerts);
-          console.log(`[MUTE] Ticketmaster: ${tmConcerts.length} concerts found`);
-        }
-      } catch (error) {
-        errors.push('Ticketmaster API error');
-        console.warn('[MUTE] Ticketmaster error:', error);
-      }
+      fetchPromises.push(
+        ticketmasterApi.getConcertsInParis({ size: 200 })
+          .then(concerts => ({ source: 'Ticketmaster', concerts }))
+          .catch(err => {
+            errors.push('Ticketmaster');
+            console.warn('[MUTE] Ticketmaster error:', err);
+            return { source: 'Ticketmaster', concerts: [] };
+          })
+      );
     }
 
-    // 2. Bandsintown - recherche par artistes populaires
+    // 2. Bandsintown - par artistes populaires
     if (API_CONFIG.bandsintown?.enabled) {
-      const batchSize = 10;
-      let bandsintownTotal = 0;
+      fetchPromises.push(
+        (async () => {
+          const batchSize = 10;
+          const results: Concert[] = [];
 
-      console.log('[MUTE] Fetching from Bandsintown...');
+          for (let i = 0; i < POPULAR_ARTISTS.length; i += batchSize) {
+            const batch = POPULAR_ARTISTS.slice(i, i + batchSize);
+            const batchPromises = batch.map(artistName =>
+              bandsintownApi.getArtistEventsInParis(artistName).catch(() => [])
+            );
 
-      for (let i = 0; i < POPULAR_ARTISTS.length; i += batchSize) {
-        const batch = POPULAR_ARTISTS.slice(i, i + batchSize);
-        const batchPromises = batch.map(artistName =>
-          bandsintownApi.getArtistEventsInParis(artistName)
-            .catch(() => [])
-        );
+            const batchResults = await Promise.all(batchPromises);
+            batchResults.forEach(r => results.push(...r));
 
-        try {
-          const batchResults = await Promise.all(batchPromises);
-          const validResults = batchResults.filter(r => r.length > 0);
-          allConcerts.push(...validResults);
-          bandsintownTotal += validResults.reduce((sum, r) => sum + r.length, 0);
-        } catch (error) {
-          console.warn('[MUTE] Bandsintown batch error:', error);
-        }
+            if (i + batchSize < POPULAR_ARTISTS.length) {
+              await delay(150);
+            }
+          }
 
-        // Rate limiting
-        if (i + batchSize < POPULAR_ARTISTS.length) {
-          await delay(150);
-        }
-      }
-
-      console.log(`[MUTE] Bandsintown: ${bandsintownTotal} concerts found`);
+          return { source: 'Bandsintown', concerts: results };
+        })().catch(err => {
+          errors.push('Bandsintown');
+          console.warn('[MUTE] Bandsintown error:', err);
+          return { source: 'Bandsintown', concerts: [] };
+        })
+      );
     }
 
-    // 3. OpenAgenda - evenements locaux (si configure)
+    // 3. OpenAgenda - evenements locaux
     if (API_CONFIG.openagenda?.enabled && API_CONFIG.openagenda?.apiKey) {
-      try {
-        console.log('[MUTE] Fetching from OpenAgenda...');
-        const oaConcerts = await openagendaApi.getWeekEvents();
-        if (oaConcerts.length > 0) {
-          allConcerts.push(oaConcerts);
-          console.log(`[MUTE] OpenAgenda: ${oaConcerts.length} concerts found`);
-        }
-      } catch (error) {
-        errors.push('OpenAgenda API error');
-      }
+      fetchPromises.push(
+        openagendaApi.getWeekEvents()
+          .then(concerts => ({ source: 'OpenAgenda', concerts }))
+          .catch(err => {
+            errors.push('OpenAgenda');
+            return { source: 'OpenAgenda', concerts: [] };
+          })
+      );
     }
 
+    // 4. Resident Advisor - electro/techno
+    fetchPromises.push(
+      residentAdvisorApi.getParisEvents()
+        .then(concerts => ({ source: 'Resident Advisor', concerts }))
+        .catch(err => {
+          errors.push('Resident Advisor');
+          console.warn('[MUTE] RA error:', err);
+          return { source: 'Resident Advisor', concerts: [] };
+        })
+    );
+
+    // 5. Shotgun - electro/clubs
+    fetchPromises.push(
+      shotgunApi.getParisEvents()
+        .then(concerts => ({ source: 'Shotgun', concerts }))
+        .catch(err => {
+          errors.push('Shotgun');
+          console.warn('[MUTE] Shotgun error:', err);
+          return { source: 'Shotgun', concerts: [] };
+        })
+    );
+
+    // 6. Dice - billetterie alternative
+    fetchPromises.push(
+      diceApi.getParisEvents()
+        .then(concerts => ({ source: 'Dice', concerts }))
+        .catch(err => {
+          errors.push('Dice');
+          console.warn('[MUTE] Dice error:', err);
+          return { source: 'Dice', concerts: [] };
+        })
+    );
+
+    // 7. Paris Venues - salles parisiennes directement
+    fetchPromises.push(
+      parisVenuesApi.getAllEvents()
+        .then(concerts => ({ source: 'Paris Venues', concerts }))
+        .catch(err => {
+          errors.push('Paris Venues');
+          console.warn('[MUTE] Paris Venues error:', err);
+          return { source: 'Paris Venues', concerts: [] };
+        })
+    );
+
+    // Execute toutes les requetes en parallele
+    const results = await Promise.all(fetchPromises);
+
+    // Log les resultats par source
+    results.forEach(({ source, concerts }) => {
+      if (concerts.length > 0) {
+        allConcerts.push(concerts);
+        console.log(`[MUTE] ${source}: ${concerts.length} concerts`);
+      }
+    });
+
+    // Fusion et deduplication
     const merged = mergeConcerts(allConcerts);
-    console.log(`[MUTE] Total unique concerts: ${merged.length}`);
+    const elapsed = Date.now() - startTime;
+
+    console.log(`[MUTE] Total: ${merged.length} unique concerts (${elapsed}ms)`);
 
     if (errors.length > 0) {
-      console.warn('[MUTE] API errors:', errors.join(', '));
+      console.warn('[MUTE] Sources with errors:', errors.join(', '));
     }
 
     return merged;
@@ -395,30 +521,47 @@ export const concertService = {
   // Recherche de concerts par texte (multi-API)
   async searchConcerts(query: string): Promise<Concert[]> {
     const results: Concert[][] = [];
+    const searchPromises: Promise<Concert[]>[] = [];
 
     // Recherche sur Ticketmaster
     if (API_CONFIG.ticketmaster?.enabled && API_CONFIG.ticketmaster?.apiKey) {
-      try {
-        const tmResults = await ticketmasterApi.searchByArtist(query);
-        if (tmResults.length > 0) {
-          results.push(tmResults);
-        }
-      } catch (error) {
-        console.warn('[MUTE] Ticketmaster search error:', error);
-      }
+      searchPromises.push(
+        ticketmasterApi.searchByArtist(query).catch(() => [])
+      );
     }
 
     // Recherche sur Bandsintown
     if (API_CONFIG.bandsintown?.enabled) {
-      try {
-        const bitResults = await bandsintownApi.getArtistEventsInParis(query);
-        if (bitResults.length > 0) {
-          results.push(bitResults);
-        }
-      } catch (error) {
-        console.warn('[MUTE] Bandsintown search error:', error);
-      }
+      searchPromises.push(
+        bandsintownApi.getArtistEventsInParis(query).catch(() => [])
+      );
     }
+
+    // Recherche sur Resident Advisor
+    searchPromises.push(
+      residentAdvisorApi.searchByArtist(query).catch(() => [])
+    );
+
+    // Recherche sur Shotgun
+    searchPromises.push(
+      shotgunApi.searchByArtist(query).catch(() => [])
+    );
+
+    // Recherche sur Dice
+    searchPromises.push(
+      diceApi.searchByArtist(query).catch(() => [])
+    );
+
+    // Recherche dans les salles parisiennes
+    searchPromises.push(
+      parisVenuesApi.searchByArtist(query).catch(() => [])
+    );
+
+    // Execute toutes les recherches en parallele
+    const searchResults = await Promise.all(searchPromises);
+    searchResults.forEach(r => {
+      if (r.length > 0) results.push(r);
+    });
 
     // Si resultats API, retourne les resultats fusionnes
     if (results.length > 0) {
@@ -427,11 +570,11 @@ export const concertService = {
 
     // Sinon recherche dans le cache local
     const allConcerts = await this.getAllConcerts();
-    const lowerQuery = query.toLowerCase();
+    const normalizedQuery = normalizeString(query);
     return allConcerts.filter(c =>
-      c.artist.name.toLowerCase().includes(lowerQuery) ||
-      c.venue.name.toLowerCase().includes(lowerQuery) ||
-      c.genre?.toLowerCase().includes(lowerQuery)
+      normalizeString(c.artist.name).includes(normalizedQuery) ||
+      normalizeString(c.venue.name).includes(normalizedQuery) ||
+      (c.genre && normalizeString(c.genre).includes(normalizedQuery))
     );
   },
 
