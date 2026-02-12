@@ -8,12 +8,10 @@ import { residentAdvisorApi } from './api/residentAdvisor';
 import { shotgunApi } from './api/shotgun';
 import { diceApi } from './api/dice';
 import { parisVenuesApi } from './api/parisVenues';
-import { mockConcerts } from './mockData';
 import { API_CONFIG } from '../config/api';
 
 // Configuration
 const CACHE_DURATION = API_CONFIG.cache.duration;
-const USE_MOCK_FALLBACK = true; // Utilise les donnees mock si les APIs ne repondent pas
 
 // Cache simple en memoire
 interface CacheEntry<T> {
@@ -267,13 +265,7 @@ export const concertService = {
     }
 
     try {
-      let concerts = await this.fetchFromApis();
-
-      // Si aucun concert des APIs, utilise les donnees mock (mode offline/demo)
-      if (concerts.length === 0 && USE_MOCK_FALLBACK) {
-        console.log('[MUTE] No API data, using mock concerts for demo');
-        concerts = [...mockConcerts];
-      }
+      const concerts = await this.fetchFromApis();
 
       // Trie par date
       const sorted = concerts.sort((a, b) =>
@@ -288,15 +280,6 @@ export const concertService = {
       return sorted;
     } catch (error) {
       console.error('[MUTE] Error fetching concerts:', error);
-
-      // Fallback vers mock data en cas d'erreur
-      if (USE_MOCK_FALLBACK) {
-        console.log('[MUTE] API error, falling back to mock data');
-        return [...mockConcerts].sort((a, b) =>
-          new Date(a.date).getTime() - new Date(b.date).getTime()
-        );
-      }
-
       return [];
     }
   },
@@ -368,48 +351,56 @@ export const concertService = {
     }
 
     // 4. Resident Advisor - electro/techno
-    fetchPromises.push(
-      residentAdvisorApi.getParisEvents()
-        .then(concerts => ({ source: 'Resident Advisor', concerts }))
-        .catch(err => {
-          errors.push('Resident Advisor');
-          console.warn('[MUTE] RA error:', err);
-          return { source: 'Resident Advisor', concerts: [] };
-        })
-    );
+    if (API_CONFIG.residentAdvisor?.enabled) {
+      fetchPromises.push(
+        residentAdvisorApi.getParisEvents()
+          .then(concerts => ({ source: 'Resident Advisor', concerts }))
+          .catch(err => {
+            errors.push('Resident Advisor');
+            console.warn('[MUTE] RA error:', err);
+            return { source: 'Resident Advisor', concerts: [] };
+          })
+      );
+    }
 
     // 5. Shotgun - electro/clubs
-    fetchPromises.push(
-      shotgunApi.getParisEvents()
-        .then(concerts => ({ source: 'Shotgun', concerts }))
-        .catch(err => {
-          errors.push('Shotgun');
-          console.warn('[MUTE] Shotgun error:', err);
-          return { source: 'Shotgun', concerts: [] };
-        })
-    );
+    if (API_CONFIG.shotgun?.enabled) {
+      fetchPromises.push(
+        shotgunApi.getParisEvents()
+          .then(concerts => ({ source: 'Shotgun', concerts }))
+          .catch(err => {
+            errors.push('Shotgun');
+            console.warn('[MUTE] Shotgun error:', err);
+            return { source: 'Shotgun', concerts: [] };
+          })
+      );
+    }
 
     // 6. Dice - billetterie alternative
-    fetchPromises.push(
-      diceApi.getParisEvents()
-        .then(concerts => ({ source: 'Dice', concerts }))
-        .catch(err => {
-          errors.push('Dice');
-          console.warn('[MUTE] Dice error:', err);
-          return { source: 'Dice', concerts: [] };
-        })
-    );
+    if (API_CONFIG.dice?.enabled) {
+      fetchPromises.push(
+        diceApi.getParisEvents()
+          .then(concerts => ({ source: 'Dice', concerts }))
+          .catch(err => {
+            errors.push('Dice');
+            console.warn('[MUTE] Dice error:', err);
+            return { source: 'Dice', concerts: [] };
+          })
+      );
+    }
 
     // 7. Paris Venues - salles parisiennes directement
-    fetchPromises.push(
-      parisVenuesApi.getAllEvents()
-        .then(concerts => ({ source: 'Paris Venues', concerts }))
-        .catch(err => {
-          errors.push('Paris Venues');
-          console.warn('[MUTE] Paris Venues error:', err);
-          return { source: 'Paris Venues', concerts: [] };
-        })
-    );
+    if (API_CONFIG.parisVenues?.enabled) {
+      fetchPromises.push(
+        parisVenuesApi.getAllEvents()
+          .then(concerts => ({ source: 'Paris Venues', concerts }))
+          .catch(err => {
+            errors.push('Paris Venues');
+            console.warn('[MUTE] Paris Venues error:', err);
+            return { source: 'Paris Venues', concerts: [] };
+          })
+      );
+    }
 
     // Execute toutes les requetes en parallele
     const results = await Promise.all(fetchPromises);
@@ -554,24 +545,32 @@ export const concertService = {
     }
 
     // Recherche sur Resident Advisor
-    searchPromises.push(
-      residentAdvisorApi.searchByArtist(query).catch(() => [])
-    );
+    if (API_CONFIG.residentAdvisor?.enabled) {
+      searchPromises.push(
+        residentAdvisorApi.searchByArtist(query).catch(() => [])
+      );
+    }
 
     // Recherche sur Shotgun
-    searchPromises.push(
-      shotgunApi.searchByArtist(query).catch(() => [])
-    );
+    if (API_CONFIG.shotgun?.enabled) {
+      searchPromises.push(
+        shotgunApi.searchByArtist(query).catch(() => [])
+      );
+    }
 
     // Recherche sur Dice
-    searchPromises.push(
-      diceApi.searchByArtist(query).catch(() => [])
-    );
+    if (API_CONFIG.dice?.enabled) {
+      searchPromises.push(
+        diceApi.searchByArtist(query).catch(() => [])
+      );
+    }
 
     // Recherche dans les salles parisiennes
-    searchPromises.push(
-      parisVenuesApi.searchByArtist(query).catch(() => [])
-    );
+    if (API_CONFIG.parisVenues?.enabled) {
+      searchPromises.push(
+        parisVenuesApi.searchByArtist(query).catch(() => [])
+      );
+    }
 
     // Execute toutes les recherches en parallele
     const searchResults = await Promise.all(searchPromises);
