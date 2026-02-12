@@ -1,4 +1,6 @@
 export * from './theme';
+export * from './genres';
+export * from './app';
 
 // Configuration generale
 export const APP_CONFIG = {
