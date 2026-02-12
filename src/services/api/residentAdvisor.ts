@@ -156,7 +156,7 @@ const transformEvent = (event: RAEvent): Concert | null => {
     endTime: event.endTime,
     price,
     ticketUrl: `https://ra.co${event.contentUrl}`,
-    source: 'residentadvisor',
+    source: 'residentAdvisor',
     sourceId: String(event.id),
     genre: 'Electronic',
     imageUrl: buildImageUrl(event.images?.[0]?.filename),

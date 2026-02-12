@@ -197,7 +197,7 @@ const SOURCE_PRIORITY: Record<string, number> = {
   venue: 8,
   dice: 7,
   shotgun: 6,
-  residentadvisor: 5,
+  residentAdvisor: 5,
   openagenda: 4,
   mock: 1,
 };

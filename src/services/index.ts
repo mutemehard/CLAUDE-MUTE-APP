@@ -2,7 +2,16 @@ export { concertService, artistService, venueService } from './concertService';
 export { mockConcerts, mockArtists, mockVenues } from './mockData';
 
 // APIs externes
-export { apiClient, bandsintownApi, openagendaApi } from './api';
+export {
+  apiClient,
+  bandsintownApi,
+  openagendaApi,
+  ticketmasterApi,
+  residentAdvisorApi,
+  shotgunApi,
+  diceApi,
+  parisVenuesApi,
+} from './api';
 
 // Scrapers
 export { scrapeAllEvents, mergeScrapedConcerts } from './scrapers';

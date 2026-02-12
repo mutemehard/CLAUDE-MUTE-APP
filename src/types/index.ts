@@ -57,6 +57,8 @@ export type DataSource =
   | 'parisBy'
   | 'fnac'
   | 'digitick'
+  | 'dice'
+  | 'venue'
   | 'manual';
 
 export interface ConcertFilters {

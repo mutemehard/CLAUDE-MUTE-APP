@@ -286,11 +286,11 @@ export const diceApi = {
 
       const data = await response.json();
       const edges = data.data?.events?.edges || [];
-      const events = edges.map((edge: { node: DiceEvent }) => edge.node);
+      const events: DiceEvent[] = edges.map((edge: { node: DiceEvent }) => edge.node);
 
       return events
         .map(transformEvent)
-        .filter((c): c is Concert => c !== null);
+        .filter((c: Concert | null): c is Concert => c !== null);
     } catch (error) {
       console.error('[Dice] GraphQL error:', error);
       return [];

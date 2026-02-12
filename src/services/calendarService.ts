@@ -12,12 +12,12 @@ interface ExpoCalendar {
   isPrimary?: boolean;
 }
 
-// Type pour les evenements calendrier
+// Type pour les evenements calendrier (compatible avec expo-calendar Event)
 interface ExpoCalendarEvent {
   id: string;
-  title: string;
-  startDate: Date;
-  endDate: Date;
+  title?: string;
+  startDate: string | Date;
+  endDate: string | Date;
 }
 
 export interface CalendarEventResult {
