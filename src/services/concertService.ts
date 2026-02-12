@@ -8,11 +8,12 @@ import { residentAdvisorApi } from './api/residentAdvisor';
 import { shotgunApi } from './api/shotgun';
 import { diceApi } from './api/dice';
 import { parisVenuesApi } from './api/parisVenues';
+import { mockConcerts } from './mockData';
 import { API_CONFIG } from '../config/api';
 
 // Configuration
 const CACHE_DURATION = API_CONFIG.cache.duration;
-const USE_REAL_API = true; // Toggle to use real APIs vs mock data
+const USE_MOCK_FALLBACK = true; // Utilise les donnees mock si les APIs ne repondent pas
 
 // Cache simple en memoire
 interface CacheEntry<T> {
@@ -256,7 +257,7 @@ const POPULAR_ARTISTS = [
 // API publique du service
 export const concertService = {
   // Récupère tous les concerts (avec cache)
-  // Sources: Ticketmaster, Bandsintown, OpenAgenda
+  // Sources: Ticketmaster, Bandsintown, OpenAgenda, RA, Shotgun, Dice, Paris Venues
   async getAllConcerts(): Promise<Concert[]> {
     const cacheKey = 'all_concerts';
     const cached = cache.get<Concert[]>(cacheKey);
@@ -266,7 +267,13 @@ export const concertService = {
     }
 
     try {
-      const concerts = await this.fetchFromApis();
+      let concerts = await this.fetchFromApis();
+
+      // Si aucun concert des APIs, utilise les donnees mock (mode offline/demo)
+      if (concerts.length === 0 && USE_MOCK_FALLBACK) {
+        console.log('[MUTE] No API data, using mock concerts for demo');
+        concerts = [...mockConcerts];
+      }
 
       // Trie par date
       const sorted = concerts.sort((a, b) =>
@@ -281,6 +288,15 @@ export const concertService = {
       return sorted;
     } catch (error) {
       console.error('[MUTE] Error fetching concerts:', error);
+
+      // Fallback vers mock data en cas d'erreur
+      if (USE_MOCK_FALLBACK) {
+        console.log('[MUTE] API error, falling back to mock data');
+        return [...mockConcerts].sort((a, b) =>
+          new Date(a.date).getTime() - new Date(b.date).getTime()
+        );
+      }
+
       return [];
     }
   },
@@ -645,15 +661,13 @@ export const artistService = {
   // Recherche d'artistes via l'API Bandsintown
   async searchArtists(query: string): Promise<Artist[]> {
     // Recherche sur Bandsintown
-    if (USE_REAL_API) {
-      try {
-        const apiArtist = await bandsintownApi.searchArtist(query);
-        if (apiArtist) {
-          return [apiArtist];
-        }
-      } catch (error) {
-        console.warn('Artist search API error:', error);
+    try {
+      const apiArtist = await bandsintownApi.searchArtist(query);
+      if (apiArtist) {
+        return [apiArtist];
       }
+    } catch (error) {
+      console.warn('Artist search API error:', error);
     }
 
     // Recherche dans les artistes des concerts caches

@@ -707,6 +707,301 @@ export const mockVenues: Venue[] = [
   },
 ];
 
-// Les concerts sont maintenant recuperes uniquement depuis les APIs reelles (Bandsintown)
-// Plus de generation de faux concerts - uniquement des donnees reelles
-export const mockConcerts: Concert[] = [];
+// Genere des dates realistes pour les prochaines semaines
+const generateFutureDates = (): string[] => {
+  const dates: string[] = [];
+  const now = new Date();
+
+  for (let i = 0; i < 60; i++) {
+    const date = new Date(now);
+    date.setDate(now.getDate() + i);
+    dates.push(date.toISOString().split('T')[0]);
+  }
+  return dates;
+};
+
+const futureDates = generateFutureDates();
+
+// Concerts de demonstration pour le mode offline ou test
+// Ces donnees sont utilisees quand les APIs ne repondent pas
+export const mockConcerts: Concert[] = [
+  // Ce soir
+  {
+    id: 'mock-1',
+    artist: mockArtists[2], // Justice
+    venue: mockVenues[8], // Rex Club
+    date: futureDates[0], // Aujourd'hui
+    startTime: '23:00',
+    endTime: '06:00',
+    price: { min: 20, max: 25, currency: '€' },
+    ticketUrl: 'https://example.com/justice',
+    source: 'manual',
+    sourceId: 'mock-1',
+    genre: 'Electronic',
+    imageUrl: 'https://picsum.photos/seed/justice-live/800/600',
+    description: 'Justice en live au Rex Club - Une nuit electro legendaire',
+  },
+  {
+    id: 'mock-2',
+    artist: mockArtists[8], // Amelie Lens
+    venue: mockVenues[9], // Concrete
+    date: futureDates[0],
+    startTime: '23:59',
+    endTime: '12:00',
+    price: { min: 25, max: 30, currency: '€' },
+    ticketUrl: 'https://example.com/amelie',
+    source: 'manual',
+    sourceId: 'mock-2',
+    genre: 'Techno',
+    imageUrl: 'https://picsum.photos/seed/amelie-lens/800/600',
+  },
+  // Demain
+  {
+    id: 'mock-3',
+    artist: mockArtists[0], // Phoenix
+    venue: mockVenues[0], // Olympia
+    date: futureDates[1],
+    startTime: '20:00',
+    endTime: '23:00',
+    price: { min: 45, max: 75, currency: '€' },
+    ticketUrl: 'https://example.com/phoenix',
+    source: 'manual',
+    sourceId: 'mock-3',
+    genre: 'Rock',
+    imageUrl: 'https://picsum.photos/seed/phoenix-olympia/800/600',
+    description: 'Phoenix en concert exceptionnel a l\'Olympia',
+  },
+  // Week-end
+  {
+    id: 'mock-4',
+    artist: mockArtists[7], // Orelsan
+    venue: mockVenues[4], // Accor Arena
+    date: futureDates[3],
+    startTime: '20:30',
+    price: { min: 55, max: 95, currency: '€' },
+    ticketUrl: 'https://example.com/orelsan',
+    source: 'manual',
+    sourceId: 'mock-4',
+    genre: 'Hip-Hop',
+    imageUrl: 'https://picsum.photos/seed/orelsan-bercy/800/600',
+    description: 'Civilisation Tour - La tournee evenement',
+  },
+  {
+    id: 'mock-5',
+    artist: mockArtists[13], // Polo & Pan
+    venue: mockVenues[1], // Zenith
+    date: futureDates[4],
+    startTime: '20:00',
+    price: { min: 42, max: 55, currency: '€' },
+    ticketUrl: 'https://example.com/polopan',
+    source: 'manual',
+    sourceId: 'mock-5',
+    genre: 'Electronic',
+    imageUrl: 'https://picsum.photos/seed/polopan-zenith/800/600',
+  },
+  {
+    id: 'mock-6',
+    artist: mockArtists[9], // Charlotte de Witte
+    venue: mockVenues[13], // La Machine du Moulin Rouge
+    date: futureDates[5],
+    startTime: '23:00',
+    endTime: '07:00',
+    price: { min: 28, max: 35, currency: '€' },
+    ticketUrl: 'https://example.com/charlotte',
+    source: 'manual',
+    sourceId: 'mock-6',
+    genre: 'Techno',
+    imageUrl: 'https://picsum.photos/seed/charlotte-machine/800/600',
+  },
+  // Semaine prochaine
+  {
+    id: 'mock-7',
+    artist: mockArtists[15], // Angele
+    venue: mockVenues[4], // Accor Arena
+    date: futureDates[8],
+    startTime: '20:00',
+    price: { min: 45, max: 85, currency: '€' },
+    ticketUrl: 'https://example.com/angele',
+    source: 'manual',
+    sourceId: 'mock-7',
+    genre: 'Pop',
+    imageUrl: 'https://picsum.photos/seed/angele-bercy/800/600',
+    description: 'Nonante-cinq Tour - Derniere date parisienne',
+  },
+  {
+    id: 'mock-8',
+    artist: mockArtists[10], // Folamour
+    venue: mockVenues[10], // Badaboum
+    date: futureDates[9],
+    startTime: '23:30',
+    price: { min: 15, max: 20, currency: '€' },
+    ticketUrl: 'https://example.com/folamour',
+    source: 'manual',
+    sourceId: 'mock-8',
+    genre: 'House',
+    imageUrl: 'https://picsum.photos/seed/folamour-badaboum/800/600',
+  },
+  {
+    id: 'mock-9',
+    artist: mockArtists[4], // Arctic Monkeys
+    venue: mockVenues[24], // La Defense Arena
+    date: futureDates[12],
+    startTime: '20:30',
+    price: { min: 55, max: 120, currency: '€' },
+    ticketUrl: 'https://example.com/arcticmonkeys',
+    source: 'manual',
+    sourceId: 'mock-9',
+    genre: 'Rock',
+    imageUrl: 'https://picsum.photos/seed/arctic-arena/800/600',
+    isSoldOut: true,
+    description: 'The Car Tour - Complet',
+  },
+  {
+    id: 'mock-10',
+    artist: mockArtists[16], // Stromae
+    venue: mockVenues[23], // Stade de France
+    date: futureDates[15],
+    startTime: '21:00',
+    price: { min: 65, max: 150, currency: '€' },
+    ticketUrl: 'https://example.com/stromae',
+    source: 'manual',
+    sourceId: 'mock-10',
+    genre: 'Electronic',
+    imageUrl: 'https://picsum.photos/seed/stromae-stade/800/600',
+    description: 'Multitude Tour - Concert exceptionnel au Stade de France',
+  },
+  // Plus tard dans le mois
+  {
+    id: 'mock-11',
+    artist: mockArtists[17], // The Blaze
+    venue: mockVenues[1], // Zenith
+    date: futureDates[20],
+    startTime: '20:30',
+    price: { min: 48, max: 65, currency: '€' },
+    ticketUrl: 'https://example.com/theblaze',
+    source: 'manual',
+    sourceId: 'mock-11',
+    genre: 'Electronic',
+    imageUrl: 'https://picsum.photos/seed/blaze-zenith/800/600',
+  },
+  {
+    id: 'mock-12',
+    artist: mockArtists[19], // Nekfeu
+    venue: mockVenues[4], // Accor Arena
+    date: futureDates[22],
+    startTime: '20:00',
+    price: { min: 50, max: 90, currency: '€' },
+    ticketUrl: 'https://example.com/nekfeu',
+    source: 'manual',
+    sourceId: 'mock-12',
+    genre: 'Hip-Hop',
+    imageUrl: 'https://picsum.photos/seed/nekfeu-bercy/800/600',
+  },
+  {
+    id: 'mock-13',
+    artist: mockArtists[28], // Nina Kraviz
+    venue: mockVenues[11], // Glazart
+    date: futureDates[25],
+    startTime: '23:00',
+    endTime: '08:00',
+    price: { min: 22, max: 28, currency: '€' },
+    ticketUrl: 'https://example.com/ninakraviz',
+    source: 'manual',
+    sourceId: 'mock-13',
+    genre: 'Techno',
+    imageUrl: 'https://picsum.photos/seed/nina-glazart/800/600',
+  },
+  {
+    id: 'mock-14',
+    artist: mockArtists[21], // Clara Luciani
+    venue: mockVenues[0], // Olympia
+    date: futureDates[28],
+    startTime: '20:00',
+    price: { min: 38, max: 55, currency: '€' },
+    ticketUrl: 'https://example.com/claraluciani',
+    source: 'manual',
+    sourceId: 'mock-14',
+    genre: 'Pop',
+    imageUrl: 'https://picsum.photos/seed/clara-olympia/800/600',
+  },
+  {
+    id: 'mock-15',
+    artist: mockArtists[30], // Bicep
+    venue: mockVenues[15], // Cabaret Sauvage
+    date: futureDates[30],
+    startTime: '22:00',
+    price: { min: 35, max: 45, currency: '€' },
+    ticketUrl: 'https://example.com/bicep',
+    source: 'manual',
+    sourceId: 'mock-15',
+    genre: 'Electronic',
+    imageUrl: 'https://picsum.photos/seed/bicep-cabaret/800/600',
+  },
+  // Mois prochain
+  {
+    id: 'mock-16',
+    artist: mockArtists[46], // DJ Snake
+    venue: mockVenues[24], // La Defense Arena
+    date: futureDates[35],
+    startTime: '21:00',
+    price: { min: 55, max: 95, currency: '€' },
+    ticketUrl: 'https://example.com/djsnake',
+    source: 'manual',
+    sourceId: 'mock-16',
+    genre: 'Electronic',
+    imageUrl: 'https://picsum.photos/seed/djsnake-arena/800/600',
+  },
+  {
+    id: 'mock-17',
+    artist: mockArtists[44], // Tame Impala
+    venue: mockVenues[4], // Accor Arena
+    date: futureDates[40],
+    startTime: '20:30',
+    price: { min: 52, max: 85, currency: '€' },
+    ticketUrl: 'https://example.com/tameimpala',
+    source: 'manual',
+    sourceId: 'mock-17',
+    genre: 'Rock',
+    imageUrl: 'https://picsum.photos/seed/tame-bercy/800/600',
+  },
+  {
+    id: 'mock-18',
+    artist: mockArtists[32], // Moderat
+    venue: mockVenues[18], // Philharmonie
+    date: futureDates[45],
+    startTime: '20:00',
+    price: { min: 45, max: 70, currency: '€' },
+    ticketUrl: 'https://example.com/moderat',
+    source: 'manual',
+    sourceId: 'mock-18',
+    genre: 'Electronic',
+    imageUrl: 'https://picsum.photos/seed/moderat-philharmonie/800/600',
+    description: 'More D4TA Tour - Experience audiovisuelle unique',
+  },
+  {
+    id: 'mock-19',
+    artist: mockArtists[49], // Sofiane Pamart
+    venue: mockVenues[17], // Salle Pleyel
+    date: futureDates[50],
+    startTime: '20:00',
+    price: { min: 35, max: 65, currency: '€' },
+    ticketUrl: 'https://example.com/sofianepamart',
+    source: 'manual',
+    sourceId: 'mock-19',
+    genre: 'Classical',
+    imageUrl: 'https://picsum.photos/seed/sofiane-pleyel/800/600',
+  },
+  {
+    id: 'mock-20',
+    artist: mockArtists[6], // Parcels
+    venue: mockVenues[0], // Olympia
+    date: futureDates[55],
+    startTime: '20:00',
+    price: { min: 42, max: 58, currency: '€' },
+    ticketUrl: 'https://example.com/parcels',
+    source: 'manual',
+    sourceId: 'mock-20',
+    genre: 'Disco',
+    imageUrl: 'https://picsum.photos/seed/parcels-olympia/800/600',
+  },
+];

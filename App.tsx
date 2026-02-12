@@ -20,6 +20,7 @@ import {
   OnboardingScreen,
   SocialScreen,
 } from './src/screens';
+import { ErrorBoundary } from './src/components';
 import { colors } from './src/constants';
 import { linking } from './src/config';
 import { RootStackParamList, TabParamList } from './src/types';
@@ -192,12 +193,14 @@ const AppNavigator: React.FC = () => {
 // App principale
 export default function App() {
   return (
-    <SafeAreaProvider>
-      <NavigationContainer theme={DarkTheme} linking={linking}>
-        <StatusBar style="light" />
-        <AppNavigator />
-      </NavigationContainer>
-    </SafeAreaProvider>
+    <ErrorBoundary>
+      <SafeAreaProvider>
+        <NavigationContainer theme={DarkTheme} linking={linking}>
+          <StatusBar style="light" />
+          <AppNavigator />
+        </NavigationContainer>
+      </SafeAreaProvider>
+    </ErrorBoundary>
   );
 }
 

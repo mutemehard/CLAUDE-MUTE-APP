@@ -7,3 +7,11 @@ export {
   openDeepLink,
   handleIncomingURL,
 } from './linking';
+export {
+  ENV,
+  API_KEYS,
+  FEATURES,
+  CACHE_CONFIG,
+  log,
+  logError,
+} from './env';
