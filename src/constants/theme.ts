@@ -80,6 +80,11 @@ export const typography = {
     fontWeight: '600' as const,
     lineHeight: 28,
   },
+  subtitle: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    lineHeight: 20,
+  },
   body: {
     fontSize: 16,
     fontWeight: 'normal' as const,
