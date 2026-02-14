@@ -18,3 +18,5 @@ export {
   EmptyView,
   LoadingView,
 } from './ErrorBoundary';
+export { ConcertInsights } from './ConcertInsights';
+export { SearchSuggestions } from './SearchSuggestions';

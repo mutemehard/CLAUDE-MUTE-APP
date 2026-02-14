@@ -47,3 +47,22 @@ export {
   isContactAlreadyFriend,
 } from './contacts';
 export type { ImportedContact, QRCodeData } from './contacts';
+
+export {
+  getOptimizedImageUrl,
+  getPlaceholderColor,
+  IMAGE_SIZES,
+} from './imageOptimizer';
+
+export {
+  calculateDistance,
+  formatDistance,
+  filterConcertsByDistance,
+  sortConcertsByDistance,
+  addDistancesToConcerts,
+  filterVenuesByDistance,
+  groupConcertsByZone,
+  findNearestConcert,
+  calculateConcertsCenter,
+  DISTANCE_FILTERS,
+} from './geoFilter';
