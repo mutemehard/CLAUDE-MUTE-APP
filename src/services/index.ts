@@ -23,6 +23,9 @@ export type { NotificationSettings } from './notificationService';
 // Storage
 export { storageService } from './storageService';
 
+// Cache (offline support)
+export { cacheService } from './cacheService';
+
 // Location
 export { locationService } from './locationService';
 
