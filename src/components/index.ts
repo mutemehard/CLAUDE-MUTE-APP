@@ -21,3 +21,5 @@ export {
 export { ConcertInsights } from './ConcertInsights';
 export { SearchSuggestions } from './SearchSuggestions';
 export { OfflineBanner, OfflineIndicator, OfflineBadge } from './OfflineBanner';
+export { OptimizedImage } from './OptimizedImage';
+export { MemoizedConcertCard } from './ConcertCard';

@@ -20,7 +20,7 @@ import {
   OnboardingScreen,
   SocialScreen,
 } from './src/screens';
-import { ErrorBoundary } from './src/components';
+import { ErrorBoundary, OfflineBanner } from './src/components';
 import { colors } from './src/constants';
 import { linking } from './src/config';
 import { RootStackParamList, TabParamList } from './src/types';
@@ -197,6 +197,7 @@ export default function App() {
       <SafeAreaProvider>
         <NavigationContainer theme={DarkTheme} linking={linking}>
           <StatusBar style="light" />
+          <OfflineBanner />
           <AppNavigator />
         </NavigationContainer>
       </SafeAreaProvider>

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -15,20 +15,10 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ConcertCard } from '../components/ConcertCard';
-import { useStore } from '../hooks';
+import { useStore, useDebounce } from '../hooks';
 import { colors, spacing, typography, borderRadius, MUSIC_GENRES } from '../constants';
 import { RootStackParamList, Concert, Artist, Venue } from '../types';
 import { artistService, venueService, concertService } from '../services';
-
-// Hook debounce pour eviter trop d'appels API
-const useDebounce = <T,>(value: T, delay: number): T => {
-  const [debouncedValue, setDebouncedValue] = useState<T>(value);
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedValue(value), delay);
-    return () => clearTimeout(timer);
-  }, [value, delay]);
-  return debouncedValue;
-};
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
