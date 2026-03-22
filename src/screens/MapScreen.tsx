@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,7 @@ import {
   ScrollView,
   FlatList,
 } from 'react-native';
-import MapView, { Marker } from 'react-native-maps';
+import { WebView } from 'react-native-webview';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useStore } from '../hooks';
@@ -24,7 +24,7 @@ const { width, height } = Dimensions.get('window');
 
 export const MapScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
-  const mapRef = useRef<MapView>(null);
+  const webViewRef = useRef<WebView>(null);
   const { concerts, fetchConcerts, isLoading, isFavorite, addFavorite, removeFavorite } = useStore();
   const [selectedConcert, setSelectedConcert] = useState<Concert | null>(null);
   const [selectedVenueConcerts, setSelectedVenueConcerts] = useState<Concert[]>([]);
@@ -121,15 +121,13 @@ export const MapScreen: React.FC = () => {
   };
 
   const centerOnParis = () => {
-    mapRef.current?.animateToRegion({
-      latitude: APP_CONFIG.defaultCoordinates.latitude,
-      longitude: APP_CONFIG.defaultCoordinates.longitude,
-      latitudeDelta: 0.08,
-      longitudeDelta: 0.08,
-    });
+    webViewRef.current?.injectJavaScript(`
+      map.setView([${APP_CONFIG.defaultCoordinates.latitude}, ${APP_CONFIG.defaultCoordinates.longitude}], 13);
+      true;
+    `);
   };
 
-  // Groupe les concerts par venue pour éviter les markers superposés
+  // Groupe les concerts par venue
   const concertsByVenue = filteredConcerts.reduce((acc, concert) => {
     const key = concert.venue.id;
     if (!acc[key]) {
@@ -146,6 +144,75 @@ export const MapScreen: React.FC = () => {
     { key: 'week', label: 'Semaine' },
   ];
 
+  // Generate Leaflet HTML map
+  const mapHtml = useMemo(() => {
+    const markers = Object.entries(concertsByVenue).map(([venueId, venueConcerts]) => {
+      const first = venueConcerts[0];
+      const hasToday = venueConcerts.some(c => isToday(c.date));
+      const color = hasToday ? '#FF4D4D' : '#6C63FF';
+      const label = venueConcerts.length > 1 ? venueConcerts.length.toString() : '\u266B';
+      const venueIds = JSON.stringify(venueConcerts.map(c => c.id));
+      return `
+        L.marker([${first.venue.latitude}, ${first.venue.longitude}], {
+          icon: L.divIcon({
+            className: 'custom-marker',
+            html: '<div style="background:${color};color:#fff;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:14px;border:2px solid #0D0D0D;">${label}</div>',
+            iconSize: [36, 36],
+            iconAnchor: [18, 18],
+          })
+        }).addTo(map).on('click', function() {
+          window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'marker', venueId: '${venueId}' }));
+        });
+      `;
+    }).join('\n');
+
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    * { margin: 0; padding: 0; }
+    html, body, #map { width: 100%; height: 100%; }
+    .custom-marker { background: none !important; border: none !important; }
+    .leaflet-tile {
+      filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3) brightness(0.7);
+    }
+    .leaflet-control-attribution { display: none; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <script>
+    var map = L.map('map', {
+      zoomControl: false,
+      attributionControl: false
+    }).setView([${APP_CONFIG.defaultCoordinates.latitude}, ${APP_CONFIG.defaultCoordinates.longitude}], 13);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+    }).addTo(map);
+
+    ${markers}
+  </script>
+</body>
+</html>`;
+  }, [concertsByVenue]);
+
+  const handleWebViewMessage = (event: { nativeEvent: { data: string } }) => {
+    try {
+      const data = JSON.parse(event.nativeEvent.data);
+      if (data.type === 'marker' && data.venueId) {
+        const venueConcerts = concertsByVenue[data.venueId];
+        if (venueConcerts) {
+          handleMarkerPress(venueConcerts);
+        }
+      }
+    } catch {}
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -159,7 +226,7 @@ export const MapScreen: React.FC = () => {
             style={[styles.viewToggle, showListView && styles.viewToggleActive]}
             onPress={() => setShowListView(!showListView)}
           >
-            <Text style={styles.viewToggleText}>{showListView ? '🗺️' : '📋'}</Text>
+            <Text style={styles.viewToggleText}>{showListView ? '\uD83D\uDDFA\uFE0F' : '\uD83D\uDCCB'}</Text>
           </TouchableOpacity>
         </View>
 
@@ -220,7 +287,7 @@ export const MapScreen: React.FC = () => {
                   onPress={() => handleFavoritePress(item)}
                 >
                   <Text style={styles.listFavoriteIcon}>
-                    {isFavorite('concert', item.id) ? '❤️' : '🤍'}
+                    {isFavorite('concert', item.id) ? '\u2764\uFE0F' : '\uD83E\uDD0D'}
                   </Text>
                 </TouchableOpacity>
               </TouchableOpacity>
@@ -235,49 +302,22 @@ export const MapScreen: React.FC = () => {
           />
         ) : (
           <>
-            <MapView
-              ref={mapRef}
+            <WebView
+              ref={webViewRef}
+              source={{ html: mapHtml }}
               style={styles.map}
-              initialRegion={{
-                latitude: APP_CONFIG.defaultCoordinates.latitude,
-                longitude: APP_CONFIG.defaultCoordinates.longitude,
-                latitudeDelta: 0.08,
-                longitudeDelta: 0.08,
-              }}
-              customMapStyle={mapStyle}
-            >
-              {Object.entries(concertsByVenue).map(([venueId, venueConcerts]) => {
-                const firstConcert = venueConcerts[0];
-                const hasToday = venueConcerts.some(c => isToday(c.date));
-
-                return (
-                  <Marker
-                    key={venueId}
-                    coordinate={{
-                      latitude: firstConcert.venue.latitude,
-                      longitude: firstConcert.venue.longitude,
-                    }}
-                    onPress={() => handleMarkerPress(venueConcerts)}
-                  >
-                    <View style={[
-                      styles.markerContainer,
-                      hasToday && styles.markerToday,
-                    ]}>
-                      <Text style={styles.markerText}>
-                        {venueConcerts.length > 1 ? venueConcerts.length : '🎵'}
-                      </Text>
-                    </View>
-                  </Marker>
-                );
-              })}
-            </MapView>
+              onMessage={handleWebViewMessage}
+              javaScriptEnabled
+              originWhitelist={['*']}
+              scrollEnabled={false}
+            />
 
             {/* Bouton recentrer */}
             <TouchableOpacity style={styles.centerButton} onPress={centerOnParis}>
-              <Text style={styles.centerButtonText}>📍</Text>
+              <Text style={styles.centerButtonText}>{'\uD83D\uDCCD'}</Text>
             </TouchableOpacity>
 
-            {/* Légende */}
+            {/* Legende */}
             <View style={styles.legend}>
               <View style={styles.legendItem}>
                 <View style={[styles.legendDot, { backgroundColor: colors.primary }]} />
@@ -292,7 +332,7 @@ export const MapScreen: React.FC = () => {
         )}
       </View>
 
-      {/* Modal concert sélectionné */}
+      {/* Modal concert selectionne */}
       <Modal
         visible={showModal}
         transparent
@@ -342,7 +382,7 @@ export const MapScreen: React.FC = () => {
                     onPress={() => handleFavoritePress(selectedConcert)}
                   >
                     <Text style={styles.favoriteButtonText}>
-                      {isFavorite('concert', selectedConcert.id) ? '❤️' : '🤍'}
+                      {isFavorite('concert', selectedConcert.id) ? '\u2764\uFE0F' : '\uD83E\uDD0D'}
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -396,32 +436,6 @@ export const MapScreen: React.FC = () => {
     </SafeAreaView>
   );
 };
-
-// Style sombre pour la carte
-const mapStyle = [
-  {
-    elementType: 'geometry',
-    stylers: [{ color: '#1d2c4d' }],
-  },
-  {
-    elementType: 'labels.text.fill',
-    stylers: [{ color: '#8ec3b9' }],
-  },
-  {
-    elementType: 'labels.text.stroke',
-    stylers: [{ color: '#1a3646' }],
-  },
-  {
-    featureType: 'road',
-    elementType: 'geometry',
-    stylers: [{ color: '#304a7d' }],
-  },
-  {
-    featureType: 'water',
-    elementType: 'geometry',
-    stylers: [{ color: '#0e1626' }],
-  },
-];
 
 const styles = StyleSheet.create({
   container: {
@@ -495,25 +509,7 @@ const styles = StyleSheet.create({
   map: {
     width: '100%',
     height: '100%',
-  },
-  markerContainer: {
-    backgroundColor: colors.secondary,
-    borderRadius: 20,
-    padding: 8,
-    minWidth: 36,
-    minHeight: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: colors.background,
-  },
-  markerToday: {
-    backgroundColor: colors.primary,
-  },
-  markerText: {
-    color: colors.textPrimary,
-    fontWeight: 'bold',
-    fontSize: 14,
+    backgroundColor: colors.background,
   },
   legend: {
     position: 'absolute',

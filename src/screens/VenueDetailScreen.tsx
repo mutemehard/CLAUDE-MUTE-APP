@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import MapView, { Marker } from 'react-native-maps';
+import { WebView } from 'react-native-webview';
 import { ConcertCard } from '../components/ConcertCard';
 import { useStore } from '../hooks';
 import { venueService, concertService } from '../services';
@@ -25,31 +25,47 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const { width } = Dimensions.get('window');
 
-// Style sombre pour la carte
-const mapStyle = [
-  {
-    elementType: 'geometry',
-    stylers: [{ color: '#1d2c4d' }],
-  },
-  {
-    elementType: 'labels.text.fill',
-    stylers: [{ color: '#8ec3b9' }],
-  },
-  {
-    elementType: 'labels.text.stroke',
-    stylers: [{ color: '#1a3646' }],
-  },
-  {
-    featureType: 'road',
-    elementType: 'geometry',
-    stylers: [{ color: '#304a7d' }],
-  },
-  {
-    featureType: 'water',
-    elementType: 'geometry',
-    stylers: [{ color: '#0e1626' }],
-  },
-];
+const getVenueMapHtml = (lat: number, lon: number) => `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    * { margin: 0; padding: 0; }
+    html, body, #map { width: 100%; height: 100%; }
+    .leaflet-tile {
+      filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3) brightness(0.7);
+    }
+    .leaflet-control-attribution { display: none; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <script>
+    var map = L.map('map', {
+      zoomControl: false,
+      attributionControl: false,
+      dragging: false,
+      scrollWheelZoom: false,
+      doubleClickZoom: false,
+      touchZoom: false,
+    }).setView([${lat}, ${lon}], 16);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+    }).addTo(map);
+    L.marker([${lat}, ${lon}], {
+      icon: L.divIcon({
+        className: 'custom-marker',
+        html: '<div style="background:#FF4D4D;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:20px;border:2px solid #fff;">\\u{1F4CD}</div>',
+        iconSize: [36, 36],
+        iconAnchor: [18, 18],
+      })
+    }).addTo(map);
+  </script>
+</body>
+</html>`;
 
 export const VenueDetailScreen: React.FC = () => {
   const route = useRoute<RouteProps>();
@@ -134,29 +150,13 @@ export const VenueDetailScreen: React.FC = () => {
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Map Header */}
         <View style={styles.mapContainer}>
-          <MapView
+          <WebView
+            source={{ html: getVenueMapHtml(venue.latitude, venue.longitude) }}
             style={styles.map}
-            initialRegion={{
-              latitude: venue.latitude,
-              longitude: venue.longitude,
-              latitudeDelta: 0.01,
-              longitudeDelta: 0.01,
-            }}
-            customMapStyle={mapStyle}
             scrollEnabled={false}
-            zoomEnabled={false}
-          >
-            <Marker
-              coordinate={{
-                latitude: venue.latitude,
-                longitude: venue.longitude,
-              }}
-            >
-              <View style={styles.markerContainer}>
-                <Text style={styles.markerText}>📍</Text>
-              </View>
-            </Marker>
-          </MapView>
+            javaScriptEnabled
+            originWhitelist={['*']}
+          />
           <View style={styles.mapOverlay} />
 
           {/* Back button */}
@@ -335,16 +335,6 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.2)',
     pointerEvents: 'none',
-  },
-  markerContainer: {
-    backgroundColor: colors.primary,
-    borderRadius: 20,
-    padding: 8,
-    borderWidth: 2,
-    borderColor: colors.textPrimary,
-  },
-  markerText: {
-    fontSize: 20,
   },
   backButton: {
     position: 'absolute',
