@@ -3,6 +3,7 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import { Concert, Artist, Venue } from '../types';
+import { EXPO_CONFIG } from '../config/env';
 
 // Configuration des notifications
 Notifications.setNotificationHandler({
@@ -88,7 +89,7 @@ export const notificationService = {
 
     try {
       const token = await Notifications.getExpoPushTokenAsync({
-        projectId: 'your-project-id', // A configurer avec votre project ID Expo
+        projectId: EXPO_CONFIG.projectId,
       });
       return token.data;
     } catch (error) {

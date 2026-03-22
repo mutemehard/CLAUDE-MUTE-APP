@@ -23,6 +23,13 @@ export const ENV = {
   deepLinkBaseUrl: 'https://mute.app',
 };
 
+// Configuration Expo
+export const EXPO_CONFIG = {
+  // Project ID pour les notifications push
+  // A configurer dans les variables d'environnement ou app.json
+  projectId: process.env.EXPO_PROJECT_ID || '',
+};
+
 // Cles API (a configurer dans les variables d'environnement)
 export const API_KEYS = {
   // Ticketmaster Discovery API

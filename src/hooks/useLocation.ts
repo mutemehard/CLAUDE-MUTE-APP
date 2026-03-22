@@ -23,17 +23,35 @@ export const useLocation = (): UseLocationResult => {
 
   // Verifie la permission au montage
   useEffect(() => {
-    const checkPermission = async () => {
+    let isMounted = true;
+
+    const checkAndFetchLocation = async () => {
       const permitted = await locationService.checkPermission();
+      if (!isMounted) return;
       setHasPermission(permitted);
 
-      // Si permission accordee et pas de location, on la recupere
-      if (permitted && !userLocation) {
-        await refreshLocation();
+      // Si permission accordee, on recupere la position
+      if (permitted) {
+        setIsLoading(true);
+        try {
+          const location = await locationService.getCurrentLocation();
+          if (isMounted && location) {
+            setUserLocation(location);
+          }
+        } catch {
+          // Silent fail on initial load
+        } finally {
+          if (isMounted) setIsLoading(false);
+        }
       }
     };
-    checkPermission();
-  }, []);
+
+    checkAndFetchLocation();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [setUserLocation]);
 
   // Demande la permission
   const requestPermission = useCallback(async (): Promise<boolean> => {

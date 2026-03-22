@@ -99,10 +99,10 @@ export const ConcertCard: React.FC<ConcertCardProps> = ({
                 </View>
               )}
               {/* Amis sur large card */}
-              {hasFriends && (
+              {hasFriends && friendsInfo && (
                 <View style={styles.largeFriendsRow}>
                   <View style={styles.largeFriendsAvatars}>
-                    {[...friendsInfo!.going, ...friendsInfo!.interested].slice(0, 3).map((friend, index) => (
+                    {[...friendsInfo.going, ...friendsInfo.interested].slice(0, 3).map((friend, index) => (
                       <View
                         key={friend.id}
                         style={[
@@ -209,10 +209,10 @@ export const ConcertCard: React.FC<ConcertCardProps> = ({
         </View>
 
         {/* Amis qui participent */}
-        {hasFriends && (
+        {hasFriends && friendsInfo && (
           <View style={styles.friendsRow}>
             <View style={styles.friendsAvatars}>
-              {friendsInfo!.going.slice(0, 3).map((friend, index) => (
+              {friendsInfo.going.slice(0, 3).map((friend, index) => (
                 <View
                   key={friend.id}
                   style={[
@@ -231,9 +231,9 @@ export const ConcertCard: React.FC<ConcertCardProps> = ({
               ))}
             </View>
             <Text style={styles.friendsText}>
-              {friendsInfo!.going.length > 0
-                ? `${friendsInfo!.going[0].displayName}${friendsInfo!.going.length > 1 ? ` +${friendsInfo!.going.length - 1}` : ''} y va`
-                : `${friendsInfo!.interested[0].displayName}${friendsInfo!.interested.length > 1 ? ` +${friendsInfo!.interested.length - 1}` : ''} interesse`}
+              {friendsInfo.going.length > 0
+                ? `${friendsInfo.going[0].displayName}${friendsInfo.going.length > 1 ? ` +${friendsInfo.going.length - 1}` : ''} y va`
+                : `${friendsInfo.interested[0]?.displayName ?? ''}${friendsInfo.interested.length > 1 ? ` +${friendsInfo.interested.length - 1}` : ''} interesse`}
             </Text>
           </View>
         )}
@@ -259,7 +259,7 @@ export const MemoizedConcertCard = memo(ConcertCard, (prev, next) => {
     prev.concert.id === next.concert.id &&
     prev.isFavorite === next.isFavorite &&
     prev.distance === next.distance &&
-    prev.friendsInfo?.going.length === next.friendsInfo?.going.length
+    (prev.friendsInfo?.going?.length ?? 0) === (next.friendsInfo?.going?.length ?? 0)
   );
 });
 

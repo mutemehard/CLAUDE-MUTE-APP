@@ -6,3 +6,4 @@ export { useConcerts } from './useConcerts';
 export { useDebounce, useDebouncedCallback, useSearch } from './useDebounce';
 export { useNetworkStatus, useIsOnline, useOnReconnect } from './useNetworkStatus';
 export { useArtistAlerts, useArtistHasConcerts, useSimilarArtists } from './useArtistAlerts';
+export { useNotificationListeners, useNotificationTap } from './useNotifications';
