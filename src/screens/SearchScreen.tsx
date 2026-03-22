@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -17,8 +17,18 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ConcertCard } from '../components/ConcertCard';
 import { useStore } from '../hooks';
 import { colors, spacing, typography, borderRadius, MUSIC_GENRES } from '../constants';
-import { RootStackParamList, Concert, Artist, Venue, SearchResult } from '../types';
+import { RootStackParamList, Concert, Artist, Venue } from '../types';
 import { artistService, venueService, concertService } from '../services';
+
+// Hook debounce pour eviter trop d'appels API
+const useDebounce = <T,>(value: T, delay: number): T => {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+  return debouncedValue;
+};
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -50,6 +60,19 @@ export const SearchScreen: React.FC = () => {
     artists: [],
     venues: [],
   });
+
+  // Debounce la query pour eviter trop de requetes
+  const debouncedQuery = useDebounce(query, 300);
+
+  // Auto-search quand la query change (avec debounce)
+  useEffect(() => {
+    if (debouncedQuery.length >= 2) {
+      handleSearch(debouncedQuery);
+    } else if (debouncedQuery.length === 0) {
+      setResults({ concerts: [], artists: [], venues: [] });
+      setHasSearched(false);
+    }
+  }, [debouncedQuery]);
 
   const handleSearch = useCallback(async (searchQuery: string) => {
     if (!searchQuery.trim()) {

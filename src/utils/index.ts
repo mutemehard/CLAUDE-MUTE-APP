@@ -80,3 +80,16 @@ export {
   useListAnimation,
   interpolateColor,
 } from './animations';
+
+export {
+  isToday,
+  isThisWeekend,
+  isThisWeek,
+  isThisMonth,
+  formatDateFr,
+  formatDateFullFr,
+  daysUntil,
+  getRelativeDateLabel,
+  groupByDate,
+  filterFutureDates,
+} from './dateUtils';

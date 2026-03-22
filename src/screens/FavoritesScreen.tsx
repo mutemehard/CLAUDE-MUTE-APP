@@ -47,28 +47,25 @@ export const FavoritesScreen: React.FC = () => {
 
     if (activeTab === 'concerts') {
       const concertFavorites = favorites.filter(f => f.type === 'concert');
-      const concerts: Concert[] = [];
-      for (const fav of concertFavorites) {
-        const concert = await concertService.getConcertById(fav.id);
-        if (concert) concerts.push(concert);
-      }
+      // Chargement en parallele au lieu de sequentiel
+      const concertPromises = concertFavorites.map(fav => concertService.getConcertById(fav.id));
+      const results = await Promise.all(concertPromises);
+      const concerts = results.filter((c): c is Concert => c !== null);
       concerts.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
       setFavoriteConcerts(concerts);
     } else if (activeTab === 'artists') {
       const artistFavorites = favorites.filter(f => f.type === 'artist');
-      const artists: Artist[] = [];
-      for (const fav of artistFavorites) {
-        const artist = await artistService.getArtistById(fav.id);
-        if (artist) artists.push(artist);
-      }
+      // Chargement en parallele
+      const artistPromises = artistFavorites.map(fav => artistService.getArtistById(fav.id));
+      const results = await Promise.all(artistPromises);
+      const artists = results.filter((a): a is Artist => a !== null);
       setFavoriteArtists(artists);
     } else if (activeTab === 'venues') {
       const venueFavorites = favorites.filter(f => f.type === 'venue');
-      const venues: Venue[] = [];
-      for (const fav of venueFavorites) {
-        const venue = await venueService.getVenueById(fav.id);
-        if (venue) venues.push(venue);
-      }
+      // Chargement en parallele
+      const venuePromises = venueFavorites.map(fav => venueService.getVenueById(fav.id));
+      const results = await Promise.all(venuePromises);
+      const venues = results.filter((v): v is Venue => v !== null);
       setFavoriteVenues(venues);
     }
 

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { Concert, Friend } from '../types';
 import { colors, spacing, borderRadius, typography } from '../constants';
+import { isToday, getRelativeDateLabel } from '../utils';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width - spacing.md * 2;
@@ -25,37 +26,9 @@ interface ConcertCardProps {
   onFavoritePress?: () => void;
   isFavorite?: boolean;
   variant?: 'default' | 'compact' | 'large';
-  distance?: string | null; // Distance formatee (ex: "1.2 km")
-  friendsInfo?: FriendsInfo; // Amis qui participent
+  distance?: string | null;
+  friendsInfo?: FriendsInfo;
 }
-
-// Formate la date en francais
-const formatDate = (dateStr: string): string => {
-  const date = new Date(dateStr);
-  const today = new Date();
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-
-  if (dateStr === today.toISOString().split('T')[0]) {
-    return 'Ce soir';
-  }
-  if (dateStr === tomorrow.toISOString().split('T')[0]) {
-    return 'Demain';
-  }
-
-  const options: Intl.DateTimeFormatOptions = {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-  };
-  return date.toLocaleDateString('fr-FR', options);
-};
-
-// Verifie si c'est aujourd'hui
-const isToday = (dateStr: string): boolean => {
-  const today = new Date().toISOString().split('T')[0];
-  return dateStr === today;
-};
 
 export const ConcertCard: React.FC<ConcertCardProps> = ({
   concert,
@@ -110,7 +83,7 @@ export const ConcertCard: React.FC<ConcertCardProps> = ({
             <View style={styles.largeInfoRow}>
               <Text style={styles.largeVenue}>{concert.venue.name}</Text>
               <Text style={styles.largeDot}>·</Text>
-              <Text style={styles.largeDate}>{formatDate(concert.date)}</Text>
+              <Text style={styles.largeDate}>{getRelativeDateLabel(concert.date)}</Text>
               <Text style={styles.largeDot}>·</Text>
               <Text style={styles.largeTime}>{concert.startTime}</Text>
             </View>
@@ -225,7 +198,7 @@ export const ConcertCard: React.FC<ConcertCardProps> = ({
         {/* Date & Heure & Prix */}
         <View style={styles.bottomRow}>
           <View style={styles.dateTimeContainer}>
-            <Text style={styles.date}>{formatDate(concert.date)}</Text>
+            <Text style={styles.date}>{getRelativeDateLabel(concert.date)}</Text>
             <Text style={styles.time}>{concert.startTime}</Text>
           </View>
           {concert.price && (
@@ -279,6 +252,16 @@ export const ConcertCard: React.FC<ConcertCardProps> = ({
     </TouchableOpacity>
   );
 };
+
+// Export optimise avec memo pour eviter les re-renders inutiles
+export const MemoizedConcertCard = memo(ConcertCard, (prev, next) => {
+  return (
+    prev.concert.id === next.concert.id &&
+    prev.isFavorite === next.isFavorite &&
+    prev.distance === next.distance &&
+    prev.friendsInfo?.going.length === next.friendsInfo?.going.length
+  );
+});
 
 const styles = StyleSheet.create({
   // Default card

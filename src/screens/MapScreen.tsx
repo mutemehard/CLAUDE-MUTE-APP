@@ -15,6 +15,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useStore } from '../hooks';
 import { colors, spacing, typography, borderRadius, APP_CONFIG } from '../constants';
+import { isToday, isThisWeekend, isThisWeek, formatDateFr } from '../utils';
 import { RootStackParamList, Concert } from '../types';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -35,36 +36,6 @@ export const MapScreen: React.FC = () => {
   useEffect(() => {
     fetchConcerts();
   }, []);
-
-  const isToday = (dateStr: string): boolean => {
-    const today = new Date().toISOString().split('T')[0];
-    return dateStr === today;
-  };
-
-  const isThisWeekend = (dateStr: string): boolean => {
-    const date = new Date(dateStr);
-    const today = new Date();
-    const dayOfWeek = today.getDay();
-    const daysUntilSaturday = (6 - dayOfWeek + 7) % 7;
-    const saturday = new Date(today);
-    saturday.setDate(today.getDate() + daysUntilSaturday);
-    const sunday = new Date(saturday);
-    sunday.setDate(saturday.getDate() + 1);
-
-    const targetDate = new Date(dateStr);
-    return (
-      targetDate.toDateString() === saturday.toDateString() ||
-      targetDate.toDateString() === sunday.toDateString()
-    );
-  };
-
-  const isThisWeek = (dateStr: string): boolean => {
-    const date = new Date(dateStr);
-    const today = new Date();
-    const weekEnd = new Date(today);
-    weekEnd.setDate(today.getDate() + 7);
-    return date >= today && date <= weekEnd;
-  };
 
   const filteredConcerts = concerts.filter(concert => {
     switch (activeFilter) {
@@ -109,15 +80,6 @@ export const MapScreen: React.FC = () => {
     } else {
       addFavorite('concert', concert.id);
     }
-  };
-
-  const formatDate = (dateStr: string): string => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('fr-FR', {
-      weekday: 'short',
-      day: 'numeric',
-      month: 'short',
-    });
   };
 
   const centerOnParis = () => {
@@ -279,7 +241,7 @@ export const MapScreen: React.FC = () => {
                   </View>
                   <Text style={styles.listItemVenue}>{item.venue.name}</Text>
                   <Text style={styles.listItemDate}>
-                    {formatDate(item.date)} - {item.startTime}
+                    {formatDateFr(item.date)} - {item.startTime}
                   </Text>
                 </View>
                 <TouchableOpacity
@@ -367,7 +329,7 @@ export const MapScreen: React.FC = () => {
 
                 <View style={styles.previewDetails}>
                   <Text style={styles.previewDate}>
-                    {formatDate(selectedConcert.date)} - {selectedConcert.startTime}
+                    {formatDateFr(selectedConcert.date)} - {selectedConcert.startTime}
                   </Text>
                   {selectedConcert.price && (
                     <Text style={styles.previewPrice}>
@@ -417,7 +379,7 @@ export const MapScreen: React.FC = () => {
                       <View style={styles.multiConcertInfo}>
                         <Text style={styles.multiConcertArtist}>{concert.artist.name}</Text>
                         <Text style={styles.multiConcertDate}>
-                          {formatDate(concert.date)} - {concert.startTime}
+                          {formatDateFr(concert.date)} - {concert.startTime}
                         </Text>
                       </View>
                       {isToday(concert.date) && (
