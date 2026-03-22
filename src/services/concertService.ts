@@ -9,6 +9,7 @@ import { shotgunApi } from './api/shotgun';
 import { diceApi } from './api/dice';
 import { parisVenuesApi } from './api/parisVenues';
 import { API_CONFIG } from '../config/api';
+import { isToday, isThisWeek, isThisMonth } from '../utils';
 
 // Configuration
 const CACHE_DURATION = API_CONFIG.cache.duration;
@@ -50,26 +51,6 @@ const cache = new SimpleCache();
 
 // Simule un délai réseau
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-// Utilitaires de date
-const isToday = (dateStr: string): boolean => {
-  const today = new Date().toISOString().split('T')[0];
-  return dateStr === today;
-};
-
-const isThisWeek = (dateStr: string): boolean => {
-  const date = new Date(dateStr);
-  const today = new Date();
-  const weekFromNow = new Date();
-  weekFromNow.setDate(today.getDate() + 7);
-  return date >= today && date <= weekFromNow;
-};
-
-const isThisMonth = (dateStr: string): boolean => {
-  const date = new Date(dateStr);
-  const today = new Date();
-  return date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear();
-};
 
 // Filtre les concerts selon les critères
 const filterConcerts = (concerts: Concert[], filters: ConcertFilters): Concert[] => {

@@ -19,7 +19,7 @@ import { useStore, useLocation } from '../hooks';
 import { colors, spacing, typography, borderRadius, APP_CONFIG, MUSIC_GENRES } from '../constants';
 import { RootStackParamList, Concert, Artist, Venue } from '../types';
 import { artistService, venueService } from '../services';
-import { haptics } from '../utils';
+import { haptics, getRelativeDateLabel } from '../utils';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -367,7 +367,7 @@ export const HomeScreen: React.FC = () => {
             <View style={styles.featuredFooter}>
               <View style={styles.featuredTimeRow}>
                 <Text style={styles.featuredTime}>
-                  {activeTab === 'tonight' ? 'Ce soir' : formatDate(featuredConcert.date)} - {featuredConcert.startTime}
+                  {getRelativeDateLabel(featuredConcert.date)} - {featuredConcert.startTime}
                 </Text>
                 {concertDistances[featuredConcert.id] && (
                   <Text style={styles.featuredDistance}>
@@ -700,27 +700,6 @@ export const HomeScreen: React.FC = () => {
       />
     </SafeAreaView>
   );
-};
-
-// Format date helper
-const formatDate = (dateStr: string): string => {
-  const date = new Date(dateStr);
-  const today = new Date();
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-
-  if (dateStr === today.toISOString().split('T')[0]) {
-    return 'Ce soir';
-  }
-  if (dateStr === tomorrow.toISOString().split('T')[0]) {
-    return 'Demain';
-  }
-
-  return date.toLocaleDateString('fr-FR', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-  });
 };
 
 const styles = StyleSheet.create({

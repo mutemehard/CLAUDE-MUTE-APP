@@ -14,7 +14,7 @@ import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useStore } from '../hooks';
 import { concertService, notificationService, calendarService } from '../services';
-import { shareConcert, inviteFriendToConcert, haptics } from '../utils';
+import { shareConcert, inviteFriendToConcert, haptics, isToday, daysUntil, formatDateFullFr, formatDateFr } from '../utils';
 import { colors, spacing, typography, borderRadius } from '../constants';
 import { RootStackParamList, Concert, ParticipationStatus } from '../types';
 
@@ -72,42 +72,8 @@ export const ConcertDetailScreen: React.FC = () => {
     setIsLoading(false);
   };
 
-  const formatDate = (dateStr: string): string => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('fr-FR', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    });
-  };
-
-  const formatShortDate = (dateStr: string): string => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('fr-FR', {
-      weekday: 'short',
-      day: 'numeric',
-      month: 'short',
-    });
-  };
-
-  const isToday = (dateStr: string): boolean => {
-    const today = new Date().toISOString().split('T')[0];
-    return dateStr === today;
-  };
-
   const isTomorrow = (dateStr: string): boolean => {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    return dateStr === tomorrow.toISOString().split('T')[0];
-  };
-
-  const getDaysUntil = (dateStr: string): number => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const concertDate = new Date(dateStr);
-    const diff = concertDate.getTime() - today.getTime();
-    return Math.ceil(diff / (1000 * 60 * 60 * 24));
+    return daysUntil(dateStr) === 1;
   };
 
   const handleFavorite = () => {
@@ -156,7 +122,7 @@ export const ConcertDetailScreen: React.FC = () => {
       setReminderSet(true);
       Alert.alert(
         'Rappel active',
-        `Tu recevras une notification la veille du concert (${formatShortDate(concert.date)})`,
+        `Tu recevras une notification la veille du concert (${formatDateFr(concert.date)})`,
         [{ text: 'OK' }]
       );
     } catch (error) {
@@ -265,8 +231,8 @@ export const ConcertDetailScreen: React.FC = () => {
   const favorite = isFavorite('concert', concert.id);
   const today = isToday(concert.date);
   const tomorrow = isTomorrow(concert.date);
-  const daysUntil = getDaysUntil(concert.date);
-  const isPast = daysUntil < 0;
+  const daysUntilConcert = daysUntil(concert.date);
+  const isPast = daysUntilConcert < 0;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -328,10 +294,10 @@ export const ConcertDetailScreen: React.FC = () => {
           </View>
 
           {/* Countdown */}
-          {!isPast && !today && daysUntil <= 7 && (
+          {!isPast && !today && daysUntilConcert <= 7 && (
             <View style={styles.countdownBadge}>
               <Text style={styles.countdownText}>
-                J-{daysUntil}
+                J-{daysUntilConcert}
               </Text>
             </View>
           )}
@@ -356,7 +322,7 @@ export const ConcertDetailScreen: React.FC = () => {
           <View style={styles.quickStats}>
             <View style={styles.quickStatItem}>
               <Text style={styles.quickStatValue}>
-                {today ? 'Aujourd\'hui' : tomorrow ? 'Demain' : formatShortDate(concert.date)}
+                {today ? 'Aujourd\'hui' : tomorrow ? 'Demain' : formatDateFr(concert.date)}
               </Text>
               <Text style={styles.quickStatLabel}>Date</Text>
             </View>
@@ -522,7 +488,7 @@ export const ConcertDetailScreen: React.FC = () => {
                   onPress={() => navigation.push('ConcertDetail', { concertId: other.id })}
                 >
                   <View style={styles.otherDateInfo}>
-                    <Text style={styles.otherDateDate}>{formatShortDate(other.date)}</Text>
+                    <Text style={styles.otherDateDate}>{formatDateFr(other.date)}</Text>
                     <Text style={styles.otherDateVenue}>{other.venue.name}</Text>
                   </View>
                   {other.price && (
@@ -557,7 +523,7 @@ export const ConcertDetailScreen: React.FC = () => {
                     <Text style={styles.similarArtist} numberOfLines={1}>
                       {similar.artist.name}
                     </Text>
-                    <Text style={styles.similarDate}>{formatShortDate(similar.date)}</Text>
+                    <Text style={styles.similarDate}>{formatDateFr(similar.date)}</Text>
                     <Text style={styles.similarVenue} numberOfLines={1}>
                       {similar.venue.name}
                     </Text>
